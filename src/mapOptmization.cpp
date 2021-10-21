@@ -1,4 +1,5 @@
 #include "lio_sam/cloud_info.h"
+#include "lio_sam/detection.h"
 #include "lio_sam/save_map.h"
 #include "utility.h"
 
@@ -24,6 +25,12 @@ using symbol_shorthand::G;  // GPS pose
 using symbol_shorthand::V;  // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::X;  // Pose3 (x,y,z,r,p,y)
 
+using BoundingBox              = jsk_recognition_msgs::BoundingBox;
+using BoundingBoxPtr           = jsk_recognition_msgs::BoundingBoxPtr;
+using BoundingBoxConstPtr      = jsk_recognition_msgs::BoundingBoxConstPtr;
+using BoundingBoxArray         = jsk_recognition_msgs::BoundingBoxArray;
+using BoundingBoxArrayPtr      = jsk_recognition_msgs::BoundingBoxArrayPtr;
+using BoundingBoxArrayConstPtr = jsk_recognition_msgs::BoundingBoxArrayConstPtr;
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
     */
@@ -57,6 +64,7 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubLaserOdometryIncremental;
   ros::Publisher pubKeyPoses;
   ros::Publisher pubPath;
+  ros::Publisher pubKeyFrameCloud;
 
   ros::Publisher pubHistoryKeyFrames;
   ros::Publisher pubIcpKeyFrames;
@@ -69,7 +77,13 @@ class mapOptimization : public ParamServer {
   ros::Subscriber subGPS;
   ros::Subscriber subLoop;
 
+  ros::Publisher pubDetection;
+  ros::Publisher pubLaserCloudDeskewed;
+
   ros::ServiceServer srvSaveMap;
+
+  ros::ServiceClient detectionClient;
+  lio_sam::detection detectionSrv;
 
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
@@ -143,6 +157,9 @@ class mapOptimization : public ParamServer {
   Eigen::Affine3f incrementalOdometryAffineFront;
   Eigen::Affine3f incrementalOdometryAffineBack;
 
+  BoundingBoxArrayPtr detections;
+  bool detectionIsActive;
+
   mapOptimization() {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
@@ -159,7 +176,8 @@ class mapOptimization : public ParamServer {
     subGPS   = nh.subscribe<nav_msgs::Odometry>(gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
     subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-    srvSaveMap = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
+    srvSaveMap      = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
+    detectionClient = nh.serviceClient<lio_sam::detection>("se_ssd");
 
     pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
     pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud", 1);
@@ -168,6 +186,9 @@ class mapOptimization : public ParamServer {
     pubRecentKeyFrames    = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1);
     pubRecentKeyFrame     = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1);
     pubCloudRegisteredRaw = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1);
+
+    pubDetection          = nh.advertise<BoundingBoxArray>("lio_sam/mapping/detections", 1);
+    pubLaserCloudDeskewed = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_deskewed", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -217,6 +238,9 @@ class mapOptimization : public ParamServer {
     }
 
     matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
+
+    detections.reset(new BoundingBoxArray());
+    detectionIsActive = false;
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
@@ -233,6 +257,8 @@ class mapOptimization : public ParamServer {
 
     static double timeLastProcessing = -1;
     if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval) {
+      std::thread t(&mapOptimization::getDetections, this);
+
       timeLastProcessing = timeLaserInfoCur;
 
       updateInitialGuess();
@@ -243,6 +269,8 @@ class mapOptimization : public ParamServer {
 
       scan2MapOptimization();
 
+      t.join();
+
       saveKeyFramesAndFactor();
 
       correctPoses();
@@ -250,6 +278,15 @@ class mapOptimization : public ParamServer {
       publishOdometry();
 
       publishFrames();
+    }
+  }
+
+  void getDetections() {
+    detectionIsActive          = false;
+    detectionSrv.request.cloud = cloudInfo.cloud_raw;
+    if (detectionClient.call(detectionSrv)) {
+      *detections       = detectionSrv.response.detections;
+      detectionIsActive = true;
     }
   }
 
@@ -1605,6 +1642,11 @@ class mapOptimization : public ParamServer {
       globalPath.header.stamp    = timeLaserInfoStamp;
       globalPath.header.frame_id = odometryFrame;
       pubPath.publish(globalPath);
+    }
+    // publish detections
+    if (detectionIsActive) {
+      pubDetection.publish(detections);
+      pubLaserCloudDeskewed.publish(cloudInfo.cloud_deskewed);
     }
   }
 };
