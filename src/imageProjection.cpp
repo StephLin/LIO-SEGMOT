@@ -59,7 +59,9 @@ class ImageProjection : public ParamServer {
   Eigen::Affine3f transStartInverse;
 
   pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
+  pcl::PointCloud<PointXYZIRT>::Ptr rawCloudIn;
   pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
+  pcl::PointCloud<PointType>::Ptr rawCloud;
   pcl::PointCloud<PointType>::Ptr fullCloud;
   pcl::PointCloud<PointType>::Ptr extractedCloud;
 
@@ -93,7 +95,9 @@ class ImageProjection : public ParamServer {
 
   void allocateMemory() {
     laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
+    rawCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
     tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
+    rawCloud.reset(new pcl::PointCloud<PointType>());
     fullCloud.reset(new pcl::PointCloud<PointType>());
     extractedCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -183,7 +187,19 @@ class ImageProjection : public ParamServer {
     currentCloudMsg = std::move(cloudQueue.front());
     cloudQueue.pop_front();
     if (sensor == SensorType::VELODYNE) {
-      pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
+      pcl::moveFromROSMsg(currentCloudMsg, *rawCloudIn);
+      *laserCloudIn += *rawCloudIn;
+
+      rawCloud->clear();
+      for (const auto &p : *rawCloudIn) {
+        PointType xyzi;
+        xyzi.x         = p.x;
+        xyzi.y         = p.y;
+        xyzi.z         = p.z;
+        xyzi.intensity = p.intensity;
+
+        rawCloud->push_back(xyzi);
+      }
     } else if (sensor == SensorType::OUSTER) {
       // Convert to Velodyne format
       pcl::moveFromROSMsg(currentCloudMsg, *tmpOusterCloudIn);
@@ -538,6 +554,7 @@ class ImageProjection : public ParamServer {
 
   void publishClouds() {
     cloudInfo.header         = cloudHeader;
+    cloudInfo.cloud_raw      = publishCloud(&pubExtractedCloud, rawCloud, cloudHeader.stamp, lidarFrame);
     cloudInfo.cloud_deskewed = publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
   }

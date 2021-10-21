@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   message_generation
   visualization_msgs
+  jsk_recognition_msgs
 )
 
 find_package(OpenMP REQUIRED)
@@ -36,6 +37,7 @@ add_service_files(
   DIRECTORY srv
   FILES
   save_map.srv
+  detection.srv
 )
 
 generate_messages(
@@ -44,6 +46,7 @@ generate_messages(
   std_msgs
   nav_msgs
   sensor_msgs
+  jsk_recognition_msgs
 )
 
 catkin_package(
@@ -58,6 +61,7 @@ catkin_package(
   message_runtime
   message_generation
   visualization_msgs
+  jsk_recognition_msgs
 )
 
 # include directories
