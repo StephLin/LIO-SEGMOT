@@ -64,7 +64,7 @@ class DetectionFactor : public gtsam::NonlinearFactor {
   DetectionFactor(std::vector<Detection> detections,
                   Key robotPoseKey,
                   Key objectKey,
-                  MODE mode = MODE::TIGHTLY_COUPLED);
+                  MODE mode = MODE::LOOSELY_COUPLED);
 
   DetectionFactor(const This *f);
 
