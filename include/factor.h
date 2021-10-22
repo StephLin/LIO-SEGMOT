@@ -19,56 +19,23 @@ class Detection {
   using BoundingBox = jsk_recognition_msgs::BoundingBox;
 
  protected:
-  // TODO: Distinguish translation part and rotation part.
-  gtsam::Point3 mu;
-  gtsam::Vector3 sigmaVec;
-  gtsam::Matrix33 sigmaMat;
-  gtsam::Matrix33 info;
-  gtsam::Matrix33 sqrtInfo;
-
+  BoundingBox box;
+  gtsam::Pose3 pose;
   gtsam::noiseModel::Diagonal::shared_ptr diagonal;
 
-  double w;
-
-  BoundingBox box;
-
  public:
-  Detection(BoundingBox box, gtsam::Vector3 sigma, double w = 1.0);
-  Detection(BoundingBox box, double sigma = 1e-2, double w = 1.0);
-
-  ///@name Gaussian Model
-  ///@{
-
-  const gtsam::Point3 getMu() const { return this->mu; }
-  const gtsam::Vector3 getVarianceVec() const { return this->sigmaVec; }
-  const gtsam::Matrix33 getVarianceMat() const { return this->sigmaMat; }
-  const gtsam::Matrix33 getInformationMatrix() const { return this->info; }
-  const gtsam::Matrix33 getSqrtInformationMatrix() const { return this->sqrtInfo; }
-
-  const gtsam::noiseModel::Diagonal::shared_ptr getDiagonal() const { return this->diagonal; }
-
-  const double getW() const { return this->w; }
-
-  ///@}
-  ///@name Bounding Box
-  ///@{
+  Detection(BoundingBox box, gtsam::noiseModel::Diagonal::shared_ptr diagonal);
 
   const BoundingBox getBoundingBox() const { return this->box; }
+  const gtsam::Pose3 getPose() const { return this->pose; };
+  const gtsam::noiseModel::Diagonal::shared_ptr getDiagonal() const { return this->diagonal; }
 
-  ///@}
-  ///@name Log-likelihood
-  ///@{
-
-  const double error(const gtsam::Vector3 x, const double gamma) const;
-
-  ///@}
-  ///@name State
-  ///@{
-
-  const gtsam::Pose3 getPose3() const;
-
-  ///@}
+  const double error(const gtsam::Pose3 x) const;
 };
+
+std::tuple<size_t, double>
+getDetectionIndexAndError(const gtsam::Pose3 &d,
+                          std::vector<Detection> detections);
 
 class DetectionFactor : public gtsam::NonlinearFactor {
  private:
@@ -89,17 +56,13 @@ class DetectionFactor : public gtsam::NonlinearFactor {
   Key robotPoseKey;
 
   std::vector<Detection> detections;
-  std::vector<gtsam::noiseModel::Diagonal::shared_ptr> diagonals;
-  std::vector<gtsam::Vector3> zs;
-
-  double gamma;
 
   Mode mode;
 
  public:
   DetectionFactor(std::vector<Detection> detections,
-                  Key detectionKey,
                   Key robotPoseKey,
+                  Key detectionKey,
                   Mode mode = Mode::TIGHTLY_COUPLED);
 
   DetectionFactor(const This *f);
@@ -131,10 +94,7 @@ class DetectionFactor : public gtsam::NonlinearFactor {
   ///@{
 
   virtual std::tuple<size_t, double>
-  getDetectionIndexAndError(const gtsam::Pose3 &d) const;
-
-  virtual std::tuple<size_t, double>
-  getDetectionIndexAndError(const gtsam::Values &c) const;
+  getDetectionIndexAndErrorBasedOnStates(const gtsam::Values &c) const;
 
   ///@}
   ///@name Utilities
@@ -226,5 +186,5 @@ class StablePoseFactor : public gtsam::NoiseModelFactor3<gtsam::Pose3,
                 const gtsam::Pose3 &nextPose,
                 boost::optional<gtsam::Matrix &> H1 = boost::none,
                 boost::optional<gtsam::Matrix &> H2 = boost::none,
-                boost::optional<gtsam::Matrix &> H3 = boost::none);
+                boost::optional<gtsam::Matrix &> H3 = boost::none) const override;
 };

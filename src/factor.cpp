@@ -12,106 +12,60 @@
 /*                                  Detection                                 */
 /* -------------------------------------------------------------------------- */
 
-Detection::Detection(BoundingBox box, gtsam::Vector3 sigma, double w) {
-  this->box      = box;
-  this->sigmaVec = sigma;
-  this->sigmaMat = this->sigmaVec.matrix().asDiagonal();
-  this->info     = (1 / this->sigmaVec.array()).matrix().asDiagonal();
-  this->sqrtInfo = (1 / this->sigmaVec.array().sqrt()).matrix().asDiagonal();
-  this->w        = w;
-  this->diagonal = gtsam::noiseModel::Diagonal::Variances((gtsam::Vector(6) << sigma(0), sigma(1), sigma(2), 1e-4, 1e-4, 1e-4).finished());
-
-  this->mu << box.pose.position.x, box.pose.position.y, box.pose.position.z;
-}
-
-Detection::Detection(BoundingBox box, double sigma, double w) {
-  this->box      = box;
-  this->sigmaVec = gtsam::Vector3::Ones() * sigma;
-  this->sigmaMat = this->sigmaVec.matrix().asDiagonal();
-  this->info     = (1 / this->sigmaVec.array()).matrix().asDiagonal();
-  this->sqrtInfo = (1 / this->sigmaVec.array().sqrt()).matrix().asDiagonal();
-  this->w        = w;
-  this->diagonal = gtsam::noiseModel::Diagonal::Variances((gtsam::Vector(6) << sigma, sigma, sigma, 1e-4, 1e-4, 1e-4).finished());
-
-  this->mu << box.pose.position.x, box.pose.position.y, box.pose.position.z;
+Detection::Detection(Detection::BoundingBox box,
+                     gtsam::noiseModel::Diagonal::shared_ptr diagonal)
+    : box(box), diagonal(diagonal) {
+  auto p     = box.pose.position;
+  auto q     = box.pose.orientation;
+  this->pose = gtsam::Pose3(gtsam::Rot3(q.w, q.x, q.y, q.z), gtsam::Point3(p.x, p.y, p.z));
 }
 
 /* -------------------------------------------------------------------------- */
 
-const double Detection::error(const gtsam::Vector3 x, const double gamma) const {
-  double c              = this->w * sqrt(this->info.determinant());
-  double first          = -2 * (log(c / gamma));
-  gtsam::Vector3 deltaX = (x - this->mu);
-  double second         = deltaX.matrix().transpose() * this->info * deltaX;
-
-  return first + second;
+const double Detection::error(const gtsam::Pose3 x) const {
+  gtsam::Vector errorVector = gtsam::traits<gtsam::Pose3>::Local(this->pose, x);
+  return sqrt(this->diagonal->Mahalanobis(errorVector));
 }
 
 /* -------------------------------------------------------------------------- */
 
-const gtsam::Pose3 Detection::getPose3() const {
-  auto q          = this->box.pose.orientation;
-  gtsam::Rot3 r   = gtsam::Rot3(q.w, q.x, q.y, q.z);  // scalar-first format
-  auto p          = this->box.pose.position;
-  gtsam::Point3 t = gtsam::Point3(p.x, p.y, p.z);
-  return gtsam::Pose3(r, t);
-}
+std::tuple<size_t, double>
+getDetectionIndexAndError(const gtsam::Pose3 &d, std::vector<Detection> detections) {
+  size_t idx   = 0;
+  double error = detections[0].error(d);
 
-#ifdef SAMMOT_USE_EXPLICT_NOISE_MODEL
-
-/* -------------------------------------------------------------------------- */
-/*                              Max-Mixture Model                             */
-/* -------------------------------------------------------------------------- */
-
-MaxMixtureModel::MaxMixtureModel(std::vector<Detection> detections)
-    : detections(detections) {
-  for (Detection detection : detections) {
-    gtsam::Vector3 sigma = detection.getSigmaVec();
-    this->gaussians.push_back(gtsam::noiseModel::Diagonal::Variances(sigma));
+  // Figure out the optimal detection index
+  for (size_t i = 1; i < detections.size(); ++i) {
+    double error_i = detections[i].error(d);
+    if (error_i > error) {
+      idx   = i;
+      error = error_i;
+    }
   }
-}
 
-#endif
+  return std::make_tuple(idx, error);
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              Detection Factor                              */
 /* -------------------------------------------------------------------------- */
 
 DetectionFactor::DetectionFactor(std::vector<Detection> detections,
-                                 gtsam::Key detectionKey,
                                  gtsam::Key robotPoseKey,
+                                 gtsam::Key detectionKey,
                                  DetectionFactor::Mode mode)
     : detections(detections),
-      detectionKey(detectionKey),
       robotPoseKey(robotPoseKey),
-      gamma(0) {
+      detectionKey(detectionKey) {
   if (detections.size() == 0) {
     throw std::runtime_error("Does not exist any detection.");
-  }
-
-  for (Detection detection : detections) {
-    auto diagonal = gtsam::noiseModel::Diagonal::Variances(detection.getVarianceVec());
-    this->diagonals.push_back(diagonal);
-
-    this->zs.push_back(detection.getPose3().translation());
-
-    // Calculate gamma value in terms of weight and information matrix.
-    double &&gamma_ = detection.getW() * sqrt(detection.getInformationMatrix().determinant());
-    if (gamma_ > this->gamma) {
-      this->gamma = gamma_;
-    }
   }
 }
 
 DetectionFactor::DetectionFactor(const This *f) {
-  this->detections = f->detections;
-  this->zs         = f->zs;
-  this->gamma      = f->gamma;
-
-  // TODO: Do copy-initialization instead of re-initialization.
-  for (size_t idx = 0; idx < this->detections.size(); ++idx) {
-    this->diagonals.push_back(gtsam::noiseModel::Diagonal::Variances(this->detections[idx].getVarianceVec()));
-  }
+  this->detections   = f->detections;
+  this->robotPoseKey = f->robotPoseKey;
+  this->detectionKey = f->detectionKey;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -120,10 +74,8 @@ void DetectionFactor::print(const std::string &s,
                             const gtsam::KeyFormatter &keyFormatter) const {
   std::cout << s
             << "DetectionFactor("
-            << keyFormatter(this->detectionKey)
-            << ", "
-            << keyFormatter(this->robotPoseKey)
-            << ')';
+            << keyFormatter(this->detectionKey) << ", "
+            << keyFormatter(this->robotPoseKey) << ')';
 }
 
 bool DetectionFactor::equals(const DetectionFactor::Base &f, double tol) const {
@@ -136,7 +88,7 @@ bool DetectionFactor::equals(const DetectionFactor::Base &f, double tol) const {
 double DetectionFactor::error(const gtsam::Values &c) const {
   size_t idx;
   double error;
-  std::tie(idx, error) = this->getDetectionIndexAndError(c);
+  std::tie(idx, error) = this->getDetectionIndexAndErrorBasedOnStates(c);
 
   return error;
 }
@@ -146,8 +98,8 @@ DetectionFactor::linearize(const Values &c) const {
   size_t detectionIndex;
   double error;
 
-  std::tie(detectionIndex, error) = this->getDetectionIndexAndError(c);
-  auto measured                   = this->detections[detectionIndex].getPose3();
+  std::tie(detectionIndex, error) = this->getDetectionIndexAndErrorBasedOnStates(c);
+  auto measured                   = this->detections[detectionIndex].getPose();
   auto diagonal                   = this->detections[detectionIndex].getDiagonal();
 
   if (this->mode == Mode::LOOSELY_COUPLED) {
@@ -172,28 +124,11 @@ gtsam::NonlinearFactor::shared_ptr DetectionFactor::clone() const {
 /* -------------------------------------------------------------------------- */
 
 std::tuple<size_t, double>
-DetectionFactor::getDetectionIndexAndError(const gtsam::Pose3 &d) const {
-  size_t idx   = 0;
-  double error = this->detections[0].error(d.translation(), this->gamma);
-
-  // Figure out the optimal detection index
-  for (size_t i = 1; i < this->detections.size(); ++i) {
-    double error_i = this->detections[i].error(d.translation(), this->gamma);
-    if (error_i > error) {
-      idx   = i;
-      error = error_i;
-    }
-  }
-
-  return std::make_tuple(idx, error);
-}
-
-std::tuple<size_t, double>
-DetectionFactor::getDetectionIndexAndError(const gtsam::Values &c) const {
+DetectionFactor::getDetectionIndexAndErrorBasedOnStates(const gtsam::Values &c) const {
   auto p = this->getDetectionValue(c);
   auto x = this->getRobotPoseValue(c);
 
-  return this->getDetectionIndexAndError(x.inverse() * p);
+  return getDetectionIndexAndError(x.inverse() * p, this->detections);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -226,7 +161,7 @@ StablePoseFactor::evaluateError(const gtsam::Pose3 &previousPose,
                                 const gtsam::Pose3 &nextPose,
                                 boost::optional<gtsam::Matrix &> H1,
                                 boost::optional<gtsam::Matrix &> H2,
-                                boost::optional<gtsam::Matrix &> H3) {
+                                boost::optional<gtsam::Matrix &> H3) const {
   gtsam::Pose3 hx = nextPose.inverse() * previousPose * velocity;
 
   if (H1) *H1 = -velocity.inverse().AdjointMap();
