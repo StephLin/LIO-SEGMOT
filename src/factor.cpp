@@ -53,7 +53,7 @@ getDetectionIndexAndError(const gtsam::Pose3 &d, std::vector<Detection> detectio
 DetectionFactor::DetectionFactor(std::vector<Detection> detections,
                                  gtsam::Key robotPoseKey,
                                  gtsam::Key detectionKey,
-                                 DetectionFactor::Mode mode)
+                                 DetectionFactor::MODE mode)
     : detections(detections),
       robotPoseKey(robotPoseKey),
       detectionKey(detectionKey) {
@@ -102,13 +102,13 @@ DetectionFactor::linearize(const Values &c) const {
   auto measured                   = this->detections[detectionIndex].getPose();
   auto diagonal                   = this->detections[detectionIndex].getDiagonal();
 
-  if (this->mode == Mode::LOOSELY_COUPLED) {
+  if (this->mode == MODE::LOOSELY_COUPLED) {
     auto factor = gtsam::BetweenFactor<gtsam::Pose3>(this->robotPoseKey,
                                                      this->detectionKey,
                                                      measured,
                                                      diagonal);
     return factor.linearize(c);
-  } else if (this->mode == Mode::TIGHTLY_COUPLED) {
+  } else if (this->mode == MODE::TIGHTLY_COUPLED) {
     measured    = this->getRobotPoseValue(c) * measured;
     auto factor = gtsam::PriorFactor<gtsam::Pose3>(this->detectionKey,
                                                    measured,

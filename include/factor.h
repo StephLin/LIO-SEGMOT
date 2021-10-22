@@ -43,7 +43,8 @@ class DetectionFactor : public gtsam::NonlinearFactor {
   using Values         = gtsam::Values;
   using GaussianFactor = gtsam::GaussianFactor;
 
-  enum class Mode {
+ public:
+  enum class MODE {
     TIGHTLY_COUPLED,
     LOOSELY_COUPLED
   };
@@ -57,13 +58,13 @@ class DetectionFactor : public gtsam::NonlinearFactor {
 
   std::vector<Detection> detections;
 
-  Mode mode;
+  MODE mode;
 
  public:
   DetectionFactor(std::vector<Detection> detections,
                   Key robotPoseKey,
                   Key detectionKey,
-                  Mode mode = Mode::TIGHTLY_COUPLED);
+                  MODE mode = MODE::TIGHTLY_COUPLED);
 
   DetectionFactor(const This *f);
 
