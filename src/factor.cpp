@@ -52,11 +52,11 @@ getDetectionIndexAndError(const gtsam::Pose3 &d, std::vector<Detection> detectio
 
 DetectionFactor::DetectionFactor(std::vector<Detection> detections,
                                  gtsam::Key robotPoseKey,
-                                 gtsam::Key detectionKey,
+                                 gtsam::Key objectKey,
                                  DetectionFactor::MODE mode)
     : detections(detections),
       robotPoseKey(robotPoseKey),
-      detectionKey(detectionKey) {
+      objectKey(objectKey) {
   if (detections.size() == 0) {
     throw std::runtime_error("Does not exist any detection.");
   }
@@ -65,7 +65,7 @@ DetectionFactor::DetectionFactor(std::vector<Detection> detections,
 DetectionFactor::DetectionFactor(const This *f) {
   this->detections   = f->detections;
   this->robotPoseKey = f->robotPoseKey;
-  this->detectionKey = f->detectionKey;
+  this->objectKey    = f->objectKey;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -74,8 +74,8 @@ void DetectionFactor::print(const std::string &s,
                             const gtsam::KeyFormatter &keyFormatter) const {
   std::cout << s
             << "DetectionFactor("
-            << keyFormatter(this->detectionKey) << ", "
-            << keyFormatter(this->robotPoseKey) << ')';
+            << keyFormatter(this->robotPoseKey) << ", "
+            << keyFormatter(this->objectKey) << ')';
 }
 
 bool DetectionFactor::equals(const DetectionFactor::Base &f, double tol) const {
@@ -104,13 +104,13 @@ DetectionFactor::linearize(const Values &c) const {
 
   if (this->mode == MODE::LOOSELY_COUPLED) {
     auto factor = gtsam::BetweenFactor<gtsam::Pose3>(this->robotPoseKey,
-                                                     this->detectionKey,
+                                                     this->objectKey,
                                                      measured,
                                                      diagonal);
     return factor.linearize(c);
   } else if (this->mode == MODE::TIGHTLY_COUPLED) {
     measured    = this->getRobotPoseValue(c) * measured;
-    auto factor = gtsam::PriorFactor<gtsam::Pose3>(this->detectionKey,
+    auto factor = gtsam::PriorFactor<gtsam::Pose3>(this->objectKey,
                                                    measured,
                                                    diagonal);
     return factor.linearize(c);
@@ -135,9 +135,9 @@ DetectionFactor::getDetectionIndexAndErrorBasedOnStates(const gtsam::Values &c) 
 
 const gtsam::Pose3
 DetectionFactor::getDetectionValue(const gtsam::Values &c) const {
-  const gtsam::Pose3 *p = dynamic_cast<const gtsam::Pose3 *>(&(c.at(this->detectionKey)));
+  const gtsam::Pose3 *p = dynamic_cast<const gtsam::Pose3 *>(&(c.at(this->objectKey)));
   if (p == NULL) {
-    throw std::runtime_error(gtsam::DefaultKeyFormatter(this->detectionKey) + " cannot cast to Pose3.");
+    throw std::runtime_error(gtsam::DefaultKeyFormatter(this->objectKey) + " cannot cast to Pose3.");
   }
   return *p;
 }

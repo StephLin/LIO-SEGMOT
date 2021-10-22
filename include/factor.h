@@ -53,8 +53,8 @@ class DetectionFactor : public gtsam::NonlinearFactor {
   using This = DetectionFactor;
   using Base = gtsam::NonlinearFactor;
 
-  Key detectionKey;
   Key robotPoseKey;
+  Key objectKey;
 
   std::vector<Detection> detections;
 
@@ -63,7 +63,7 @@ class DetectionFactor : public gtsam::NonlinearFactor {
  public:
   DetectionFactor(std::vector<Detection> detections,
                   Key robotPoseKey,
-                  Key detectionKey,
+                  Key objectKey,
                   MODE mode = MODE::TIGHTLY_COUPLED);
 
   DetectionFactor(const This *f);
