@@ -1,6 +1,7 @@
 // Copyright 2021 Yu-Kai Lin. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+#include <stdexcept>
 #include <tuple>
 #include <vector>
 
@@ -21,14 +22,14 @@ class Detection {
  protected:
   BoundingBox box;
   gtsam::Pose3 pose;
-  gtsam::noiseModel::Diagonal::shared_ptr diagonal;
+  gtsam::Vector6 variances;
 
  public:
-  Detection(BoundingBox box, gtsam::noiseModel::Diagonal::shared_ptr diagonal);
+  Detection(BoundingBox box, gtsam::Vector6 variances);
 
   const BoundingBox getBoundingBox() const { return this->box; }
   const gtsam::Pose3 getPose() const { return this->pose; };
-  const gtsam::noiseModel::Diagonal::shared_ptr getDiagonal() const { return this->diagonal; }
+  gtsam::noiseModel::Diagonal::shared_ptr getDiagonal() const { return gtsam::noiseModel::Diagonal::Variances(this->variances); }
 
   const double error(const gtsam::Pose3 x) const;
 };
@@ -37,75 +38,130 @@ std::tuple<size_t, double>
 getDetectionIndexAndError(const gtsam::Pose3 &d,
                           std::vector<Detection> detections);
 
-class DetectionFactor : public gtsam::NonlinearFactor {
+class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pose3,
+                                                                      gtsam::Pose3> {
  private:
-  using Key            = gtsam::Key;
-  using Values         = gtsam::Values;
-  using GaussianFactor = gtsam::GaussianFactor;
-
- public:
-  enum class MODE {
-    TIGHTLY_COUPLED,
-    LOOSELY_COUPLED
-  };
+  using This = TightlyCoupledDetectionFactor;
+  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
  protected:
-  using This = DetectionFactor;
-  using Base = gtsam::NonlinearFactor;
-
-  Key robotPoseKey;
-  Key objectKey;
-
   std::vector<Detection> detections;
-
-  MODE mode;
+  std::vector<gtsam::noiseModel::Diagonal::shared_ptr> noiseModels;
 
  public:
-  DetectionFactor(std::vector<Detection> detections,
-                  Key robotPoseKey,
-                  Key objectKey,
-                  MODE mode = MODE::LOOSELY_COUPLED);
+  /** Constructor */
+  TightlyCoupledDetectionFactor(gtsam::Key robotPoseKey,
+                                gtsam::Key objectPoseKey,
+                                std::vector<Detection> detections)
+      : Base(boost::shared_ptr<gtsam::noiseModel::Diagonal>(),
+             robotPoseKey,
+             objectPoseKey),
+        detections(detections) {
+    for (const auto &detection : detections) {
+      this->noiseModels.push_back(detection.getDiagonal());
+    }
+  }
 
-  DetectionFactor(const This *f);
+  /** print */
+  virtual void
+  print(const std::string &s,
+        const gtsam::KeyFormatter &keyFormatter = gtsam::DefaultKeyFormatter) const {
+    std::cout << s << "TightlyCoupledDetectionFactor("
+              << keyFormatter(this->robotPoseKey()) << ", "
+              << keyFormatter(this->objectPoseKey()) << ")\n";
+  }
 
-  virtual ~DetectionFactor() {}
+  /** equals */
+  virtual bool equals(const NonlinearFactor &expected, double tol = 1e-9) const {
+    const This *e = dynamic_cast<const This *>(&expected);
+    return e != NULL && Base::equals(*e, tol);
+  }
 
-  ///@name Testable
-  ///@{
+  gtsam::Key robotPoseKey() const { return key1(); }
+  gtsam::Key objectPoseKey() const { return key2(); }
 
-  virtual void print(const std::string &s                    = "",
-                     const gtsam::KeyFormatter &keyFormatter = gtsam::DefaultKeyFormatter) const override;
+  virtual gtsam::Vector
+  evaluateError(const gtsam::Pose3 &robotPose,
+                const gtsam::Pose3 &objectPose,
+                const gtsam::Pose3 &measured,
+                boost::optional<gtsam::Matrix &> H1 = boost::none,
+                boost::optional<gtsam::Matrix &> H2 = boost::none) const;
 
-  virtual bool equals(const Base &f, double tol = 1e-9) const override;
+  virtual gtsam::Vector
+  evaluateError(const gtsam::Pose3 &robotPose,
+                const gtsam::Pose3 &objectPose,
+                boost::optional<gtsam::Matrix &> H1 = boost::none,
+                boost::optional<gtsam::Matrix &> H2 = boost::none) const override {
+    throw std::runtime_error("This evaluateError function is revoked.");
+  }
 
-  ///@}
-  ///@name Standard Interface
-  ///@{
+  virtual gtsam::Vector unwhitenedError(const gtsam::Pose3 &measured,
+                                        const gtsam::Values &x,
+                                        boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const;
 
-  virtual double error(const Values &c) const override;
+  virtual boost::shared_ptr<gtsam::GaussianFactor>
+  linearize(const gtsam::Values &c) const override;
+};
 
-  virtual size_t dim() const override { return 3; };
+class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+ private:
+  using This = LooselyCoupledDetectionFactor;
+  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
-  virtual GaussianFactor::shared_ptr linearize(const Values &c) const override;
+ protected:
+  std::vector<Detection> detections;
+  std::vector<gtsam::noiseModel::Diagonal::shared_ptr> noiseModels;
 
-  virtual Base::shared_ptr clone() const override;
+  gtsam::Key robotPoseKey_;
 
-  ///@}
-  ///@name Max-Mixture
-  ///@{
+ public:
+  /** Constructor */
+  LooselyCoupledDetectionFactor(gtsam::Key robotPoseKey,
+                                gtsam::Key objectPoseKey,
+                                std::vector<Detection> detections)
+      : Base(boost::shared_ptr<gtsam::noiseModel::Diagonal>(), objectPoseKey),
+        robotPoseKey_(robotPoseKey),
+        detections(detections) {
+    for (const auto &detection : detections) {
+      this->noiseModels.push_back(detection.getDiagonal());
+    }
+  }
 
-  virtual std::tuple<size_t, double>
-  getDetectionIndexAndErrorBasedOnStates(const gtsam::Values &c) const;
+  /** print */
+  virtual void
+  print(const std::string &s,
+        const gtsam::KeyFormatter &keyFormatter = gtsam::DefaultKeyFormatter) const {
+    std::cout << s << "LooselyCoupledDetectionFactor("
+              << keyFormatter(this->robotPoseKey()) << ","
+              << keyFormatter(this->objectPoseKey()) << ")\n";
+  }
 
-  ///@}
-  ///@name Utilities
-  ///@{
+  /** equals */
+  virtual bool equals(const NonlinearFactor &expected, double tol = 1e-9) const {
+    const This *e = dynamic_cast<const This *>(&expected);
+    return e != NULL && Base::equals(*e, tol);
+  }
 
-  virtual const gtsam::Pose3 getDetectionValue(const gtsam::Values &c) const;
+  gtsam::Key robotPoseKey() const { return this->robotPoseKey_; }
+  gtsam::Key objectPoseKey() const { return this->key(); }
 
-  virtual const gtsam::Pose3 getRobotPoseValue(const gtsam::Values &c) const;
+  virtual gtsam::Vector
+  evaluateError(const gtsam::Pose3 &robotPose,
+                const gtsam::Pose3 &objectPose,
+                const gtsam::Pose3 &measured,
+                boost::optional<gtsam::Matrix &> H1 = boost::none) const;
 
-  ///@}
+  virtual gtsam::Vector
+  evaluateError(const gtsam::Pose3 &x, boost::optional<gtsam::Matrix &> H = boost::none) const override {
+    throw std::runtime_error("This evaluateError function is revoked.");
+  }
+
+  virtual gtsam::Vector unwhitenedError(const gtsam::Pose3 &measured,
+                                        const gtsam::Values &x,
+                                        boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const;
+
+  virtual boost::shared_ptr<gtsam::GaussianFactor>
+  linearize(const gtsam::Values &c) const override;
 };
 
 class ConstantVelocityFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
@@ -151,13 +207,17 @@ class StablePoseFactor : public gtsam::NoiseModelFactor3<gtsam::Pose3,
                                         gtsam::Pose3,
                                         gtsam::Pose3>;
 
+ protected:
+  double deltaTime;
+
  public:
   /** Constructor */
   StablePoseFactor(gtsam::Key previousPoseKey,
                    gtsam::Key velocityKey,
                    gtsam::Key nextPoseKey,
+                   double deltaTime,
                    const gtsam::SharedNoiseModel &model = nullptr)
-      : Base(model, previousPoseKey, velocityKey, nextPoseKey) {
+      : Base(model, previousPoseKey, velocityKey, nextPoseKey), deltaTime(deltaTime) {
   }
 
   /** print */
@@ -167,7 +227,8 @@ class StablePoseFactor : public gtsam::NoiseModelFactor3<gtsam::Pose3,
     std::cout << s << "StablePoseFactor("
               << keyFormatter(this->key1()) << ","
               << keyFormatter(this->key2()) << ","
-              << keyFormatter(this->key3()) << ")\n";
+              << keyFormatter(this->key3()) << ")"
+              << "  dt = " << this->deltaTime << '\n';
     this->noiseModel_->print("  noise model: ");
   }
 

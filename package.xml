@@ -48,4 +48,7 @@
   <build_depend>jsk_recognition_msgs</build_depend>
   <run_depend>jsk_recognition_msgs</run_depend>
 
+  <build_depend>jsk_topic_tools</build_depend>
+  <run_depend>jsk_topic_tools</run_depend>
+
 </package>

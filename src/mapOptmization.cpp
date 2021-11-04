@@ -1,7 +1,11 @@
+#include <jsk_topic_tools/color_utils.h>
+#include "factor.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/detection.h"
 #include "lio_sam/save_map.h"
 #include "utility.h"
+
+#include <visualization_msgs/MarkerArray.h>
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
@@ -49,6 +53,47 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIRPYT,
 
 typedef PointXYZIRPYT PointTypePose;
 
+class ObjectState {
+ public:
+  Pose3 pose                 = Pose3::identity();
+  Pose3 velocity             = Pose3::identity();
+  uint64_t poseNodeIndex     = 0;
+  uint64_t velocityNodeIndex = 0;
+  uint64_t objectIndex       = 0;
+  int lostCount              = 0;
+
+  BoundingBox box   = BoundingBox();
+  double confidence = 0;
+
+  ObjectState(Pose3 pose                 = Pose3::identity(),
+              Pose3 velocity             = Pose3::identity(),
+              uint64_t poseNodeIndex     = 0,
+              uint64_t velocityNodeIndex = 0,
+              uint64_t objectIndex       = 0,
+              int lostCount              = 0,
+              BoundingBox box            = BoundingBox(),
+              double confidence          = 0)
+      : pose(pose),
+        velocity(velocity),
+        poseNodeIndex(poseNodeIndex),
+        velocityNodeIndex(velocityNodeIndex),
+        objectIndex(objectIndex),
+        lostCount(lostCount),
+        box(box),
+        confidence(confidence) {}
+
+  ObjectState clone() const {
+    return ObjectState(pose,
+                       velocity,
+                       poseNodeIndex,
+                       velocityNodeIndex,
+                       objectIndex,
+                       lostCount,
+                       box,
+                       confidence);
+  }
+};
+
 class mapOptimization : public ParamServer {
  public:
   // gtsam
@@ -79,6 +124,8 @@ class mapOptimization : public ParamServer {
 
   ros::Publisher pubDetection;
   ros::Publisher pubLaserCloudDeskewed;
+  ros::Publisher pubObjects;
+  ros::Publisher pubObjectPaths;
 
   ros::ServiceServer srvSaveMap;
 
@@ -95,6 +142,7 @@ class mapOptimization : public ParamServer {
   pcl::PointCloud<PointTypePose>::Ptr cloudKeyPoses6D;
   pcl::PointCloud<PointType>::Ptr copy_cloudKeyPoses3D;
   pcl::PointCloud<PointTypePose>::Ptr copy_cloudKeyPoses6D;
+  std::vector<uint64_t> keyPoseIndices;
 
   pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;    // corner feature set from odoOptimization
   pcl::PointCloud<PointType>::Ptr laserCloudSurfLast;      // surf feature set from odoOptimization
@@ -130,6 +178,7 @@ class mapOptimization : public ParamServer {
 
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
+  double deltaTime;
 
   float transformTobeMapped[6];
 
@@ -158,7 +207,13 @@ class mapOptimization : public ParamServer {
   Eigen::Affine3f incrementalOdometryAffineBack;
 
   BoundingBoxArrayPtr detections;
-  bool detectionIsActive;
+  std::vector<Detection> detectionVector;
+  bool detectionIsActive = false;
+  std::vector<std::map<uint64_t, ObjectState>> objects;
+  visualization_msgs::MarkerArray objectPaths;
+  uint64_t numberOfRegisteredObjects = 0;
+
+  uint64_t numberOfNodes = 0;
 
   mapOptimization() {
     ISAM2Params parameters;
@@ -189,6 +244,8 @@ class mapOptimization : public ParamServer {
 
     pubDetection          = nh.advertise<BoundingBoxArray>("lio_sam/mapping/detections", 1);
     pubLaserCloudDeskewed = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_deskewed", 1);
+    pubObjects            = nh.advertise<BoundingBoxArray>("lio_sam/mapping/objects", 1);
+    pubObjectPaths        = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_paths", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -240,7 +297,6 @@ class mapOptimization : public ParamServer {
     matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
 
     detections.reset(new BoundingBoxArray());
-    detectionIsActive = false;
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
@@ -259,6 +315,7 @@ class mapOptimization : public ParamServer {
     if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval) {
       std::thread t(&mapOptimization::getDetections, this);
 
+      deltaTime          = timeLaserInfoCur - timeLastProcessing;
       timeLastProcessing = timeLaserInfoCur;
 
       updateInitialGuess();
@@ -1316,15 +1373,25 @@ class mapOptimization : public ParamServer {
 
   void addOdomFactor() {
     if (cloudKeyPoses3D->points.empty()) {
+      auto currentKeyIndex = numberOfNodes++;  // 0
+      keyPoseIndices.push_back(currentKeyIndex);
+
       noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished());  // rad*rad, meter*meter
       gtSAMgraph.add(PriorFactor<Pose3>(0, trans2gtsamPose(transformTobeMapped), priorNoise));
-      initialEstimate.insert(0, trans2gtsamPose(transformTobeMapped));
+      initialEstimate.insert(currentKeyIndex, trans2gtsamPose(transformTobeMapped));
     } else {
+      auto previousKeyIndex = keyPoseIndices.back();
+      auto currentKeyIndex  = numberOfNodes++;
+      keyPoseIndices.push_back(currentKeyIndex);
+
       noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
       gtsam::Pose3 poseFrom                          = pclPointTogtsamPose3(cloudKeyPoses6D->points.back());
       gtsam::Pose3 poseTo                            = trans2gtsamPose(transformTobeMapped);
-      gtSAMgraph.add(BetweenFactor<Pose3>(cloudKeyPoses3D->size() - 1, cloudKeyPoses3D->size(), poseFrom.between(poseTo), odometryNoise));
-      initialEstimate.insert(cloudKeyPoses3D->size(), poseTo);
+      gtSAMgraph.add(BetweenFactor<Pose3>(previousKeyIndex,
+                                          currentKeyIndex,
+                                          poseFrom.between(poseTo),
+                                          odometryNoise));
+      initialEstimate.insert(currentKeyIndex, poseTo);
     }
   }
 
@@ -1417,6 +1484,175 @@ class mapOptimization : public ParamServer {
     aLoopIsClosed = true;
   }
 
+  void propagateObjectPoses() {
+    std::map<uint64_t, ObjectState> nextObjects;
+
+    // Only triggered in the beginning.
+    if (objects.empty()) {
+      objects.push_back(nextObjects);
+      return;
+    }
+
+    cout << "DELTA_TIME :: " << deltaTime << "\n\n";
+
+    for (const auto& pairedObject : objects.back()) {
+      // Drop the object if it is lost for a long time
+      // TODO: Set a larger number
+      if (pairedObject.second.lostCount >= 1) continue;
+
+      // Propagate the object using the constant velocity model as well as
+      // register a new variable node for the object
+      auto identity                = Pose3::identity();
+      auto nextObject              = pairedObject.second.clone();
+      auto deltaPoseVec            = gtsam::traits<Pose3>::Local(identity, nextObject.velocity) * deltaTime;
+      auto deltaPose               = gtsam::traits<Pose3>::Retract(identity, deltaPoseVec);
+      nextObject.pose              = nextObject.pose * deltaPose;
+      nextObject.poseNodeIndex     = numberOfNodes++;
+      nextObject.velocityNodeIndex = numberOfNodes++;
+      nextObject.box               = pairedObject.second.box;
+      nextObject.confidence        = pairedObject.second.confidence;
+
+      initialEstimate.insert(nextObject.poseNodeIndex, nextObject.pose);
+      initialEstimate.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+
+      nextObjects[pairedObject.first] = nextObject;
+    }
+    objects.push_back(nextObjects);
+  }
+
+  void addConstantVelocityFactor() {
+    // Skip the process if there is no enough time stamps for adding constant
+    // velocity factors
+    if (objects.size() < 2) return;
+
+    for (const auto& pairedObject : objects.back()) {
+      auto noiseModel     = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 1e-1, 1e-1, 1e-1).finished());
+      auto currentObject  = pairedObject.second;
+      auto objectIndex    = currentObject.objectIndex;
+      auto previousObject = objects[objects.size() - 2][objectIndex];
+      gtSAMgraph.add(ConstantVelocityFactor(previousObject.velocityNodeIndex,
+                                            currentObject.velocityNodeIndex,
+                                            noiseModel));
+    }
+  }
+
+  void addStablePoseFactor() {
+    // Skip the process if there is no enough time stamps for adding constant
+    // velocity factors
+    if (objects.size() < 2) return;
+
+    for (const auto& pairedObject : objects.back()) {
+      auto noise          = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, 1e-2, 1e-1, 1e-1, 1e-1).finished());
+      auto currentObject  = pairedObject.second;
+      auto objectIndex    = currentObject.objectIndex;
+      auto previousObject = objects[objects.size() - 2][objectIndex];
+      gtSAMgraph.add(StablePoseFactor(previousObject.poseNodeIndex,
+                                      previousObject.velocityNodeIndex,
+                                      currentObject.poseNodeIndex,
+                                      deltaTime,
+                                      noise));
+    }
+  }
+
+  void addDetectionFactor() {
+    // Skip the process if there is no detection found
+    if (!detectionIsActive || detections->boxes.size() == 0) return;
+
+    // Initialize an indicator matrix for data association of objects and
+    // detections, where we secretly add a row to the matrix in case of no
+    // active objects at the current stamp
+    Eigen::MatrixXi indicator = Eigen::MatrixXi::Zero(objects.back().size() + 1,
+                                                      detections->boxes.size());
+
+    // Create a vector of Detections.
+    detectionVector.clear();
+    for (const auto& box : detections->boxes) {
+      gtsam::Vector6 variances;
+      variances << 1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2;
+      detectionVector.emplace_back(box, variances);
+    }
+
+    auto egoPoseKey = keyPoseIndices.back();
+    auto egoPose    = initialEstimate.at<Pose3>(egoPoseKey);
+    auto invEgoPose = egoPose.inverse();
+
+    // Perform the data association for each object, and determine if this
+    // object is lost at this stamp
+    cout << "OBJECT_INDICES ::\n";
+    size_t i = 0;  // object index with respect to the indicator matrix
+    for (auto& pairedObject : objects.back()) {
+      auto& object = pairedObject.second;
+      size_t j;  // detection index with respect to the indicator matrix
+      double error;
+      cout << object.objectIndex << ' ';
+
+      std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, detectionVector);
+
+      if (error < detectionMatchThreshold) {  // found
+        indicator(i, j)   = 1;
+        object.lostCount  = 0;
+        object.confidence = min(object.confidence + 0.1, 1.0);
+
+        gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                     object.poseNodeIndex,
+                                                     detectionVector));
+      } else {  // lost
+        ++object.lostCount;
+        object.confidence = 0.0;
+      }
+
+      ++i;
+    }
+    cout << "\n\n";
+
+    cout << "INDICATOR ::\n"
+         << indicator << "\n\n";
+
+    // Register a new dynamic object if the detection does not belong to any
+    // current active objects
+    for (size_t idx = 0; idx < detectionVector.size(); ++idx) {
+      if (indicator.col(idx).sum() == 0) {
+        // Initialize the object
+        ObjectState object;
+        object.pose              = egoPose * detectionVector[idx].getPose();
+        object.velocity          = Pose3::identity();
+        object.poseNodeIndex     = numberOfNodes++;
+        object.velocityNodeIndex = numberOfNodes++;
+        object.objectIndex       = numberOfRegisteredObjects++;
+
+        // TODO: Propagate the bounding box in the post-processing
+        object.box = detectionVector[idx].getBoundingBox();
+
+        objects.back()[object.objectIndex] = object;
+
+        // Initialize a path object (marker) for visualizing path
+        visualization_msgs::Marker marker;
+        marker.id                 = object.objectIndex;
+        marker.type               = visualization_msgs::Marker::LINE_STRIP;
+        std_msgs::ColorRGBA color = jsk_topic_tools::colorCategory20(object.objectIndex);
+        marker.color.a            = 1.0;
+        marker.color.r            = color.r;
+        marker.color.g            = color.g;
+        marker.color.b            = color.b;
+        marker.scale.x            = 0.08;
+        marker.pose.orientation   = tf::createQuaternionMsgFromYaw(0);
+        objectPaths.markers.push_back(marker);
+
+        initialEstimate.insert(object.poseNodeIndex, object.pose);
+        initialEstimate.insert(object.velocityNodeIndex, object.velocity);
+
+        // detection factor
+        gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                     object.poseNodeIndex,
+                                                     detectionVector));
+
+        // prior velocity factor (the noise should be large)
+        auto noise = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 1e-2, 1e-2, 1e-2).finished());
+        gtSAMgraph.add(PriorFactor<Pose3>(object.velocityNodeIndex, object.velocity, noise));
+      }
+    }
+  }
+
   void saveKeyFramesAndFactor() {
     if (saveFrame() == false)
       return;
@@ -1429,6 +1665,18 @@ class mapOptimization : public ParamServer {
 
     // loop factor
     addLoopFactor();
+
+    // perform dynamic object propagation
+    propagateObjectPoses();
+
+    // constant velocity factor (for multi-object tracking)
+    addConstantVelocityFactor();
+
+    // stable pose factor (for multi-object tracking)
+    addStablePoseFactor();
+
+    // detection factor (for multi-object tracking tracking)
+    addDetectionFactor();
 
     // cout << "****************************************************" << endl;
     // gtSAMgraph.print("GTSAM Graph:\n");
@@ -1454,7 +1702,7 @@ class mapOptimization : public ParamServer {
     Pose3 latestEstimate;
 
     isamCurrentEstimate = isam->calculateEstimate();
-    latestEstimate      = isamCurrentEstimate.at<Pose3>(isamCurrentEstimate.size() - 1);
+    latestEstimate      = isamCurrentEstimate.at<Pose3>(keyPoseIndices.back());
     // cout << "****************************************************" << endl;
     // isamCurrentEstimate.print("Current estimate: ");
 
@@ -1477,7 +1725,7 @@ class mapOptimization : public ParamServer {
     // cout << "****************************************************" << endl;
     // cout << "Pose covariance:" << endl;
     // cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << endl << endl;
-    poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size() - 1);
+    poseCovariance = isam->marginalCovariance(keyPoseIndices.back());
 
     // save updated transform
     transformTobeMapped[0] = latestEstimate.rotation().roll();
@@ -1499,6 +1747,52 @@ class mapOptimization : public ParamServer {
 
     // save path for visualization
     updatePath(thisPose6D);
+
+    // save dynamic objects
+    size_t i = 0;
+    for (auto& pairedObject : objects.back()) {
+      auto& object = pairedObject.second;
+
+      // cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
+      //      << object.pose << "\n"
+      //      << "VELOCITY ::\n"
+      //      << object.velocity << "\n";
+
+      object.pose     = isamCurrentEstimate.at<Pose3>(object.poseNodeIndex);
+      object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
+
+      // cout << "(OBJECT " << object.objectIndex << ") [AFTER ]\nPOSITION ::\n"
+      //      << object.pose << "\n"
+      //      << "VELOCITY ::\n"
+      //      << object.velocity << "\n\n";
+
+      // TODO: Reproduce the post-processing of tracking (refer to FG-3DMOT)
+      // // Check if there is any detection belongs to the object.
+      // int index;
+      // double error;
+      // std::tie(index, error) = getDetectionIndexAndError(object.pose, detectionVector);
+
+      // if (error < detectionMatchThreshold) {  // found
+      // object.box = detections->boxes[index];
+
+      auto p                     = object.pose.translation();
+      object.box.pose.position.x = p.x();
+      object.box.pose.position.y = p.y();
+      object.box.pose.position.z = p.z();
+
+      auto r                      = object.pose.rotation();
+      object.box.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r.roll(), r.pitch(), r.yaw());
+
+      object.box.header.frame_id = odometryFrame;
+      object.box.label           = object.objectIndex;
+      // object.confidence          = object.box.value;
+
+      // } else {  // lost
+      //   object.confidence = 0;
+      // }
+
+      ++i;
+    }
   }
 
   void correctPoses() {
@@ -1511,18 +1805,19 @@ class mapOptimization : public ParamServer {
       // clear path
       globalPath.poses.clear();
       // update key poses
-      int numPoses = isamCurrentEstimate.size();
+      int numPoses = keyPoseIndices.size();
       for (int i = 0; i < numPoses; ++i) {
-        cloudKeyPoses3D->points[i].x = isamCurrentEstimate.at<Pose3>(i).translation().x();
-        cloudKeyPoses3D->points[i].y = isamCurrentEstimate.at<Pose3>(i).translation().y();
-        cloudKeyPoses3D->points[i].z = isamCurrentEstimate.at<Pose3>(i).translation().z();
+        auto poseIndex               = keyPoseIndices[i];
+        cloudKeyPoses3D->points[i].x = isamCurrentEstimate.at<Pose3>(poseIndex).translation().x();
+        cloudKeyPoses3D->points[i].y = isamCurrentEstimate.at<Pose3>(poseIndex).translation().y();
+        cloudKeyPoses3D->points[i].z = isamCurrentEstimate.at<Pose3>(poseIndex).translation().z();
 
         cloudKeyPoses6D->points[i].x     = cloudKeyPoses3D->points[i].x;
         cloudKeyPoses6D->points[i].y     = cloudKeyPoses3D->points[i].y;
         cloudKeyPoses6D->points[i].z     = cloudKeyPoses3D->points[i].z;
-        cloudKeyPoses6D->points[i].roll  = isamCurrentEstimate.at<Pose3>(i).rotation().roll();
-        cloudKeyPoses6D->points[i].pitch = isamCurrentEstimate.at<Pose3>(i).rotation().pitch();
-        cloudKeyPoses6D->points[i].yaw   = isamCurrentEstimate.at<Pose3>(i).rotation().yaw();
+        cloudKeyPoses6D->points[i].roll  = isamCurrentEstimate.at<Pose3>(poseIndex).rotation().roll();
+        cloudKeyPoses6D->points[i].pitch = isamCurrentEstimate.at<Pose3>(poseIndex).rotation().pitch();
+        cloudKeyPoses6D->points[i].yaw   = isamCurrentEstimate.at<Pose3>(poseIndex).rotation().yaw();
 
         updatePath(cloudKeyPoses6D->points[i]);
       }
@@ -1644,9 +1939,44 @@ class mapOptimization : public ParamServer {
       pubPath.publish(globalPath);
     }
     // publish detections
-    if (detectionIsActive) {
+    if (pubDetection.getNumSubscribers() != 0 && detectionIsActive) {
       pubDetection.publish(detections);
+    }
+    if (pubLaserCloudDeskewed.getNumSubscribers() != 0) {
+      cloudInfo.header.stamp = timeLaserInfoStamp;
       pubLaserCloudDeskewed.publish(cloudInfo.cloud_deskewed);
+    }
+    // public dynamic objects
+    if (pubObjects.getNumSubscribers() != 0 && detectionIsActive) {
+      BoundingBoxArray objectMessage;
+      objectMessage.header          = detections->header;
+      objectMessage.header.frame_id = odometryFrame;
+      objectMessage.header.stamp    = timeLaserInfoStamp;
+
+      for (auto& pairedObject : objects.back()) {
+        auto& object = pairedObject.second;
+        // FIXME: Only publish detected objects?
+        // if (object.confidence > 0) {
+
+        // TODO: A better data structure to present moving object with path
+        // Bounding box
+        object.box.header.stamp = timeLaserInfoStamp;
+        objectMessage.boxes.push_back(object.box);
+
+        // Path
+        geometry_msgs::Point point;
+        point.x = object.box.pose.position.x;
+        point.y = object.box.pose.position.y;
+        point.z = object.box.pose.position.z;
+        objectPaths.markers[object.objectIndex].points.push_back(point);
+        objectPaths.markers[object.objectIndex].header.frame_id = odometryFrame;
+        objectPaths.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+        // }
+      }
+
+      pubObjects.publish(objectMessage);
+      pubObjectPaths.publish(objectPaths);
     }
   }
 };
