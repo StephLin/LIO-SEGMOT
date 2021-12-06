@@ -237,7 +237,7 @@ class ParamServer {
     nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
     nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
-    nh.param<float>("lio_sam/detectionMatchThreshod", detectionMatchThreshold, 30.0);
+    nh.param<float>("lio_sam/detectionMatchThreshod", detectionMatchThreshold, 19.5);
 
     usleep(100);
   }

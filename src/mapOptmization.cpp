@@ -22,6 +22,9 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
+// #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
+#define MAP_OPTIMIZATION_DEBUG
+
 using namespace gtsam;
 
 using symbol_shorthand::B;  // Bias  (ax,ay,az,gx,gy,gz)
@@ -65,6 +68,9 @@ class ObjectState {
   BoundingBox box   = BoundingBox();
   double confidence = 0;
 
+  bool isTightlyCoupled = false;
+  bool isFirst          = false;
+
   ObjectState(Pose3 pose                 = Pose3::identity(),
               Pose3 velocity             = Pose3::identity(),
               uint64_t poseNodeIndex     = 0,
@@ -72,7 +78,9 @@ class ObjectState {
               uint64_t objectIndex       = 0,
               int lostCount              = 0,
               BoundingBox box            = BoundingBox(),
-              double confidence          = 0)
+              double confidence          = 0,
+              bool isTightlyCoupled      = false,
+              bool isFirst               = false)
       : pose(pose),
         velocity(velocity),
         poseNodeIndex(poseNodeIndex),
@@ -80,7 +88,10 @@ class ObjectState {
         objectIndex(objectIndex),
         lostCount(lostCount),
         box(box),
-        confidence(confidence) {}
+        confidence(confidence),
+        isTightlyCoupled(isTightlyCoupled),
+        isFirst(isFirst) {
+  }
 
   ObjectState clone() const {
     return ObjectState(pose,
@@ -90,7 +101,9 @@ class ObjectState {
                        objectIndex,
                        lostCount,
                        box,
-                       confidence);
+                       confidence,
+                       isTightlyCoupled,
+                       isFirst);
   }
 };
 
@@ -126,6 +139,9 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubLaserCloudDeskewed;
   ros::Publisher pubObjects;
   ros::Publisher pubObjectPaths;
+  ros::Publisher pubTightlyCoupledObjectPoints;
+  ros::Publisher pubObjectLabels;
+  ros::Publisher pubObjectVelocities;
 
   ros::ServiceServer srvSaveMap;
 
@@ -208,9 +224,13 @@ class mapOptimization : public ParamServer {
 
   BoundingBoxArrayPtr detections;
   std::vector<Detection> detectionVector;
+  std::vector<Detection> tightlyCoupledDetectionVector;
   bool detectionIsActive = false;
   std::vector<std::map<uint64_t, ObjectState>> objects;
   visualization_msgs::MarkerArray objectPaths;
+  visualization_msgs::Marker tightlyCoupledObjectPoints;
+  visualization_msgs::MarkerArray objectLabels;
+  visualization_msgs::MarkerArray objectVelocities;
   uint64_t numberOfRegisteredObjects = 0;
 
   uint64_t numberOfNodes = 0;
@@ -242,10 +262,13 @@ class mapOptimization : public ParamServer {
     pubRecentKeyFrame     = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1);
     pubCloudRegisteredRaw = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1);
 
-    pubDetection          = nh.advertise<BoundingBoxArray>("lio_sam/mapping/detections", 1);
-    pubLaserCloudDeskewed = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_deskewed", 1);
-    pubObjects            = nh.advertise<BoundingBoxArray>("lio_sam/mapping/objects", 1);
-    pubObjectPaths        = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_paths", 1);
+    pubDetection                  = nh.advertise<BoundingBoxArray>("lio_sam/mapping/detections", 1);
+    pubLaserCloudDeskewed         = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_deskewed", 1);
+    pubObjects                    = nh.advertise<BoundingBoxArray>("lio_sam/mapping/objects", 1);
+    pubObjectPaths                = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_paths", 1);
+    pubTightlyCoupledObjectPoints = nh.advertise<visualization_msgs::Marker>("lio_sam/mapping/tightly_coupled_object_points", 1);
+    pubObjectLabels               = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_labels", 1);
+    pubObjectVelocities           = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocities", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -297,6 +320,16 @@ class mapOptimization : public ParamServer {
     matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
 
     detections.reset(new BoundingBoxArray());
+
+    tightlyCoupledObjectPoints.action  = visualization_msgs::Marker::ADD;
+    tightlyCoupledObjectPoints.type    = visualization_msgs::Marker::SPHERE_LIST;
+    tightlyCoupledObjectPoints.color.a = 0.4;
+    tightlyCoupledObjectPoints.color.r = 1.0;
+    tightlyCoupledObjectPoints.color.g = 1.0;
+    tightlyCoupledObjectPoints.color.b = 1.0;
+    tightlyCoupledObjectPoints.scale.x = 1.0;
+    tightlyCoupledObjectPoints.scale.y = 1.0;
+    tightlyCoupledObjectPoints.scale.z = 1.0;
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
@@ -1493,7 +1526,9 @@ class mapOptimization : public ParamServer {
       return;
     }
 
-    cout << "DELTA_TIME :: " << deltaTime << "\n\n";
+#ifdef MAP_OPTIMIZATION_DEBUG
+    std::cout << "DELTA_TIME :: " << deltaTime << "\n\n";
+#endif
 
     for (const auto& pairedObject : objects.back()) {
       // Drop the object if it is lost for a long time
@@ -1511,6 +1546,7 @@ class mapOptimization : public ParamServer {
       nextObject.velocityNodeIndex = numberOfNodes++;
       nextObject.box               = pairedObject.second.box;
       nextObject.confidence        = pairedObject.second.confidence;
+      nextObject.isFirst           = false;
 
       initialEstimate.insert(nextObject.poseNodeIndex, nextObject.pose);
       initialEstimate.insert(nextObject.velocityNodeIndex, nextObject.velocity);
@@ -1526,7 +1562,11 @@ class mapOptimization : public ParamServer {
     if (objects.size() < 2) return;
 
     for (const auto& pairedObject : objects.back()) {
-      auto noiseModel     = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 1e-1, 1e-1, 1e-1).finished());
+      // Skip if the object is lost at this stamp or is a new object
+      if (pairedObject.second.isFirst) continue;
+      if (pairedObject.second.lostCount > 0) continue;
+
+      auto noiseModel     = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1).finished());
       auto currentObject  = pairedObject.second;
       auto objectIndex    = currentObject.objectIndex;
       auto previousObject = objects[objects.size() - 2][objectIndex];
@@ -1542,12 +1582,20 @@ class mapOptimization : public ParamServer {
     if (objects.size() < 2) return;
 
     for (const auto& pairedObject : objects.back()) {
-      auto noise          = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, 1e-2, 1e-1, 1e-1, 1e-1).finished());
+      // Skip if the object is lost at this stamp or is a new object
+      if (pairedObject.second.isFirst) continue;
+      if (pairedObject.second.lostCount > 0) continue;
+
+      auto noise          = noiseModel::Diagonal::Variances((Vector(6) << 1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2).finished());
       auto currentObject  = pairedObject.second;
       auto objectIndex    = currentObject.objectIndex;
       auto previousObject = objects[objects.size() - 2][objectIndex];
       gtSAMgraph.add(StablePoseFactor(previousObject.poseNodeIndex,
+#ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
+                                      currentObject.velocityNodeIndex,
+#else
                                       previousObject.velocityNodeIndex,
+#endif
                                       currentObject.poseNodeIndex,
                                       deltaTime,
                                       noise));
@@ -1566,10 +1614,10 @@ class mapOptimization : public ParamServer {
 
     // Create a vector of Detections.
     detectionVector.clear();
+    tightlyCoupledDetectionVector.clear();
     for (const auto& box : detections->boxes) {
-      gtsam::Vector6 variances;
-      variances << 1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2;
-      detectionVector.emplace_back(box, variances);
+      detectionVector.emplace_back(box, (Vector(6) << 1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3).finished());
+      tightlyCoupledDetectionVector.emplace_back(box, (Vector(6) << 1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3).finished());
     }
 
     auto egoPoseKey = keyPoseIndices.back();
@@ -1578,13 +1626,18 @@ class mapOptimization : public ParamServer {
 
     // Perform the data association for each object, and determine if this
     // object is lost at this stamp
-    cout << "OBJECT_INDICES ::\n";
+#ifdef MAP_OPTIMIZATION_DEBUG
+    std::cout << "OBJECT_INDICES ::\n";
+#endif
     size_t i = 0;  // object index with respect to the indicator matrix
     for (auto& pairedObject : objects.back()) {
       auto& object = pairedObject.second;
       size_t j;  // detection index with respect to the indicator matrix
       double error;
-      cout << object.objectIndex << ' ';
+
+#ifdef MAP_OPTIMIZATION_DEBUG
+      std::cout << object.objectIndex << ' ';
+#endif
 
       std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, detectionVector);
 
@@ -1593,20 +1646,32 @@ class mapOptimization : public ParamServer {
         object.lostCount  = 0;
         object.confidence = min(object.confidence + 0.1, 1.0);
 
-        gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
-                                                     object.poseNodeIndex,
-                                                     detectionVector));
+        if (object.confidence >= 1.0) {
+          object.isTightlyCoupled = true;
+          gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
+                                                       object.poseNodeIndex,
+                                                       tightlyCoupledDetectionVector));
+        } else {
+          object.isTightlyCoupled = false;
+          gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                       object.poseNodeIndex,
+                                                       detectionVector));
+        }
+
       } else {  // lost
         ++object.lostCount;
-        object.confidence = 0.0;
+        object.confidence                               = 0.0;
+        objectPaths.markers[object.objectIndex].scale.x = 0.3;
       }
 
       ++i;
     }
-    cout << "\n\n";
 
-    cout << "INDICATOR ::\n"
+#ifdef MAP_OPTIMIZATION_DEBUG
+    cout << "\n\n"
+         << "INDICATOR ::\n"
          << indicator << "\n\n";
+#endif
 
     // Register a new dynamic object if the detection does not belong to any
     // current active objects
@@ -1619,6 +1684,7 @@ class mapOptimization : public ParamServer {
         object.poseNodeIndex     = numberOfNodes++;
         object.velocityNodeIndex = numberOfNodes++;
         object.objectIndex       = numberOfRegisteredObjects++;
+        object.isFirst           = true;
 
         // TODO: Propagate the bounding box in the post-processing
         object.box = detectionVector[idx].getBoundingBox();
@@ -1628,15 +1694,41 @@ class mapOptimization : public ParamServer {
         // Initialize a path object (marker) for visualizing path
         visualization_msgs::Marker marker;
         marker.id                 = object.objectIndex;
-        marker.type               = visualization_msgs::Marker::LINE_STRIP;
+        marker.type               = visualization_msgs::Marker::SPHERE_LIST;
         std_msgs::ColorRGBA color = jsk_topic_tools::colorCategory20(object.objectIndex);
         marker.color.a            = 1.0;
         marker.color.r            = color.r;
         marker.color.g            = color.g;
         marker.color.b            = color.b;
-        marker.scale.x            = 0.08;
+        marker.scale.x            = 0.6;
+        marker.scale.y            = 0.6;
+        marker.scale.z            = 0.6;
         marker.pose.orientation   = tf::createQuaternionMsgFromYaw(0);
         objectPaths.markers.push_back(marker);
+
+        visualization_msgs::Marker labelMarker;
+        labelMarker.id      = object.objectIndex;
+        labelMarker.type    = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        labelMarker.color.a = 1.0;
+        labelMarker.color.r = color.r;
+        labelMarker.color.g = color.g;
+        labelMarker.color.b = color.b;
+        labelMarker.scale.z = 1.2;
+        labelMarker.text    = "Object " + std::to_string(object.objectIndex);
+        objectLabels.markers.push_back(labelMarker);
+
+        visualization_msgs::Marker velocityMarker;
+        velocityMarker.id               = object.objectIndex;
+        velocityMarker.type             = visualization_msgs::Marker::SPHERE_LIST;
+        velocityMarker.color.a          = 0.5;
+        velocityMarker.color.r          = color.r;
+        velocityMarker.color.g          = color.g;
+        velocityMarker.color.b          = color.b;
+        velocityMarker.scale.x          = 0.6;
+        velocityMarker.scale.x          = 0.6;
+        velocityMarker.scale.x          = 0.6;
+        velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+        objectVelocities.markers.push_back(velocityMarker);
 
         initialEstimate.insert(object.poseNodeIndex, object.pose);
         initialEstimate.insert(object.velocityNodeIndex, object.velocity);
@@ -1646,9 +1738,11 @@ class mapOptimization : public ParamServer {
                                                      object.poseNodeIndex,
                                                      detectionVector));
 
+#ifndef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
         // prior velocity factor (the noise should be large)
-        auto noise = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 1e-2, 1e-2, 1e-2).finished());
+        auto noise = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, 1e0, 1e8, 1e2, 1e2).finished());
         gtSAMgraph.add(PriorFactor<Pose3>(object.velocityNodeIndex, object.velocity, noise));
+#endif
       }
     }
   }
@@ -1669,17 +1763,19 @@ class mapOptimization : public ParamServer {
     // perform dynamic object propagation
     propagateObjectPoses();
 
-    // constant velocity factor (for multi-object tracking)
+    // detection factor (for multi-object tracking tracking)
+    addDetectionFactor();
+
+    // // constant velocity factor (for multi-object tracking)
     addConstantVelocityFactor();
 
     // stable pose factor (for multi-object tracking)
     addStablePoseFactor();
 
-    // detection factor (for multi-object tracking tracking)
-    addDetectionFactor();
-
-    // cout << "****************************************************" << endl;
-    // gtSAMgraph.print("GTSAM Graph:\n");
+#ifdef MAP_OPTIMIZATION_DEBUG
+    std::cout << "****************************************************" << endl;
+    gtSAMgraph.print("GTSAM Graph:\n");
+#endif
 
     // update iSAM
     isam->update(gtSAMgraph, initialEstimate);
@@ -1753,18 +1849,28 @@ class mapOptimization : public ParamServer {
     for (auto& pairedObject : objects.back()) {
       auto& object = pairedObject.second;
 
-      // cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
-      //      << object.pose << "\n"
-      //      << "VELOCITY ::\n"
-      //      << object.velocity << "\n";
+#ifdef MAP_OPTIMIZATION_DEBUG
+      std::cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
+                << object.pose << "\n"
+                << "VELOCITY ::\n"
+                << object.velocity << "\n";
+#endif
 
-      object.pose     = isamCurrentEstimate.at<Pose3>(object.poseNodeIndex);
+      object.pose = isamCurrentEstimate.at<Pose3>(object.poseNodeIndex);
+#ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
+      if (!object.isFirst) {
+        object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
+      }
+#else
       object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
+#endif
 
-      // cout << "(OBJECT " << object.objectIndex << ") [AFTER ]\nPOSITION ::\n"
-      //      << object.pose << "\n"
-      //      << "VELOCITY ::\n"
-      //      << object.velocity << "\n\n";
+#ifdef MAP_OPTIMIZATION_DEBUG
+      std::cout << "(OBJECT " << object.objectIndex << ") [AFTER ]\nPOSITION ::\n"
+                << object.pose << "\n"
+                << "VELOCITY ::\n"
+                << object.velocity << "\n\n";
+#endif
 
       // TODO: Reproduce the post-processing of tracking (refer to FG-3DMOT)
       // // Check if there is any detection belongs to the object.
@@ -1953,6 +2059,13 @@ class mapOptimization : public ParamServer {
       objectMessage.header.frame_id = odometryFrame;
       objectMessage.header.stamp    = timeLaserInfoStamp;
 
+      tightlyCoupledObjectPoints.header.frame_id = odometryFrame;
+      tightlyCoupledObjectPoints.header.stamp    = timeLaserInfoStamp;
+
+      for (auto& marker : objectVelocities.markers) {
+        marker.points.clear();
+      }
+
       for (auto& pairedObject : objects.back()) {
         auto& object = pairedObject.second;
         // FIXME: Only publish detected objects?
@@ -1972,11 +2085,45 @@ class mapOptimization : public ParamServer {
         objectPaths.markers[object.objectIndex].header.frame_id = odometryFrame;
         objectPaths.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
 
+        // Tightly-coupled nodes (poses)
+        if (object.isTightlyCoupled) {
+          tightlyCoupledObjectPoints.points.push_back(point);
+        }
+
+        // Label
+        objectLabels.markers[object.objectIndex].pose.position.x = object.box.pose.position.x;
+        objectLabels.markers[object.objectIndex].pose.position.y = object.box.pose.position.y;
+        objectLabels.markers[object.objectIndex].pose.position.z = object.box.pose.position.z + 2.0;
+        objectLabels.markers[object.objectIndex].header.frame_id = odometryFrame;
+        objectLabels.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+        // Velocity (prediction of path)
+        objectVelocities.markers[object.objectIndex].header.frame_id = odometryFrame;
+        objectVelocities.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+        // .. Compute the delta pose with respect to the delta time
+        auto identity     = gtsam::Pose3::identity();
+        auto deltaPoseVec = gtsam::traits<gtsam::Pose3>::Local(identity, object.velocity) * deltaTime;
+        auto deltaPose    = gtsam::traits<gtsam::Pose3>::Retract(identity, deltaPoseVec);
+        auto nextPose     = object.pose;
+
+        // .. Object position at relative time stamp from 1 to 5
+        for (int timeStamp = 1; timeStamp <= 5; ++timeStamp) {
+          nextPose = nextPose * deltaPose;
+          point.x  = nextPose.translation().x();
+          point.y  = nextPose.translation().y();
+          point.z  = nextPose.translation().z();
+          objectVelocities.markers[object.objectIndex].points.push_back(point);
+        }
+
         // }
       }
 
       pubObjects.publish(objectMessage);
       pubObjectPaths.publish(objectPaths);
+      pubTightlyCoupledObjectPoints.publish(tightlyCoupledObjectPoints);
+      pubObjectLabels.publish(objectLabels);
+      pubObjectVelocities.publish(objectVelocities);
     }
   }
 };

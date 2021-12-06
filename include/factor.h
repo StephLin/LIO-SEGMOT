@@ -99,8 +99,19 @@ class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pos
                                         const gtsam::Values &x,
                                         boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const;
 
+  virtual gtsam::Vector unwhitenedError(const gtsam::Values &x,
+                                        boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const override {
+    throw std::runtime_error("This unwhitenedError function is revoked.");
+  };
+
   virtual boost::shared_ptr<gtsam::GaussianFactor>
   linearize(const gtsam::Values &c) const override;
+
+  std::size_t size() const {
+    return 2;
+  }
+
+  virtual size_t dim() const override { return 6; }
 };
 
 class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
@@ -160,8 +171,19 @@ class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pos
                                         const gtsam::Values &x,
                                         boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const;
 
+  virtual gtsam::Vector unwhitenedError(const gtsam::Values &x,
+                                        boost::optional<std::vector<gtsam::Matrix> &> H = boost::none) const override {
+    throw std::runtime_error("This unwhitenedError function is revoked.");
+  };
+
   virtual boost::shared_ptr<gtsam::GaussianFactor>
   linearize(const gtsam::Values &c) const override;
+
+  std::size_t size() const {
+    return 1;
+  }
+
+  virtual size_t dim() const override { return 6; }
 };
 
 class ConstantVelocityFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
