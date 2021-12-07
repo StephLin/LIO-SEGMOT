@@ -149,6 +149,24 @@ class ParamServer {
   float globalMapVisualizationPoseDensity;
   float globalMapVisualizationLeafSize;
 
+  // detection
+  float detectionMatchThreshold;
+
+  // Factor covariance matrices (presented as diagonal vectors)
+  vector<double> priorOdometryDiagonalVarianceVector;
+  vector<double> odometryDiagonalVarianceVector;
+  vector<double> constantVelocityDiagonalVarianceVector;
+  vector<double> motionDiagonalVarianceVector;
+  vector<double> looselyCoupledDetectionVarianceVector;
+  vector<double> tightlyCoupledDetectionvarianceVector;
+
+  Eigen::Matrix<double, 6, 1> priorOdometryDiagonalVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> odometryDiagonalVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> constantVelocityDiagonalVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> motionDiagonalVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> looselyCoupledDetectionVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> tightlyCoupledDetectionvarianceEigenVector;
+
   ParamServer() {
     nh.param<std::string>("/robot_id", robot_id, "roboat");
 
@@ -233,6 +251,22 @@ class ParamServer {
     nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
     nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
     nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
+
+    nh.param<float>("lio_sam/detectionMatchThreshod", detectionMatchThreshold, 19.5);
+
+    nh.param<vector<double>>("lio_sam/priorOdometryDiagonalVarianceVector", priorOdometryDiagonalVarianceVector, {1e-2, 1e-2, M_PI*M_PI, 1e8, 1e8, 1e8});
+    nh.param<vector<double>>("lio_sam/odometryDiagonalVarianceVector", odometryDiagonalVarianceVector, {1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4});
+    nh.param<vector<double>>("lio_sam/constantVelocityDiagonalVarianceVector", constantVelocityDiagonalVarianceVector, {1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1});
+    nh.param<vector<double>>("lio_sam/motionDiagonalVarianceVector", motionDiagonalVarianceVector, {1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2});
+    nh.param<vector<double>>("lio_sam/looselyCoupledDetectionVarianceVector", looselyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_sam/tightlyCoupledDetectionvarianceVector", tightlyCoupledDetectionvarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+
+    priorOdometryDiagonalVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(priorOdometryDiagonalVarianceVector.data());
+    odometryDiagonalVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(odometryDiagonalVarianceVector.data());
+    constantVelocityDiagonalVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(constantVelocityDiagonalVarianceVector.data());
+    motionDiagonalVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(motionDiagonalVarianceVector.data());
+    looselyCoupledDetectionVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(looselyCoupledDetectionVarianceVector.data());
+    tightlyCoupledDetectionvarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(tightlyCoupledDetectionvarianceVector.data());
 
     usleep(100);
   }

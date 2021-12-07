@@ -92,7 +92,16 @@ lio_sam:
   globalMapVisualizationPoseDensity: 10.0       # meters, global map visualization keyframe density
   globalMapVisualizationLeafSize: 1.0           # meters, global map visualization cloud density
 
+  # Detection
+  detectionMatchThreshold: 19.5
 
+  # Factor covariance matrices (as diagonal vectors)
+  # priorOdometryDiagonalVarianceVector: [1.0e-2, 1.0e-2, M_PI*M_PI, 1.0e+8, 1.0e+8, 1.0e+8]
+  # odometryDiagonalVarianceVector: [1.0e-6, 1.0e-6, 1.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
+  constantVelocityDiagonalVarianceVector: [1.0e-3, 1.0e-3, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
+  motionDiagonalVarianceVector: [1.0e-4, 1.0e-4, 1.0e-2, 1.0e-1, 1.0e-2, 1.0e-2]
+  looselyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
+  tightlyCoupledDetectionvarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
 
 
 # Navsat (convert GPS coordinates to Cartesian)

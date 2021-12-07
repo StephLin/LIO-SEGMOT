@@ -1,0 +1,3 @@
+sensor_msgs/PointCloud2 cloud
+---
+jsk_recognition_msgs/BoundingBoxArray detections
