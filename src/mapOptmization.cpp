@@ -1409,7 +1409,7 @@ class mapOptimization : public ParamServer {
       auto currentKeyIndex = numberOfNodes++;  // 0
       keyPoseIndices.push_back(currentKeyIndex);
 
-      noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished());  // rad*rad, meter*meter
+      noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances(priorOdometryDiagonalVarianceEigenVector);  // rad*rad, meter*meter
       gtSAMgraph.add(PriorFactor<Pose3>(0, trans2gtsamPose(transformTobeMapped), priorNoise));
       initialEstimate.insert(currentKeyIndex, trans2gtsamPose(transformTobeMapped));
     } else {
@@ -1417,7 +1417,7 @@ class mapOptimization : public ParamServer {
       auto currentKeyIndex  = numberOfNodes++;
       keyPoseIndices.push_back(currentKeyIndex);
 
-      noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
+      noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(odometryDiagonalVarianceEigenVector);
       gtsam::Pose3 poseFrom                          = pclPointTogtsamPose3(cloudKeyPoses6D->points.back());
       gtsam::Pose3 poseTo                            = trans2gtsamPose(transformTobeMapped);
       gtSAMgraph.add(BetweenFactor<Pose3>(previousKeyIndex,
@@ -1566,7 +1566,7 @@ class mapOptimization : public ParamServer {
       if (pairedObject.second.isFirst) continue;
       if (pairedObject.second.lostCount > 0) continue;
 
-      auto noiseModel     = noiseModel::Diagonal::Variances((Vector(6) << 1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1).finished());
+      auto noiseModel     = noiseModel::Diagonal::Variances(constantVelocityDiagonalVarianceEigenVector);
       auto currentObject  = pairedObject.second;
       auto objectIndex    = currentObject.objectIndex;
       auto previousObject = objects[objects.size() - 2][objectIndex];
@@ -1586,7 +1586,7 @@ class mapOptimization : public ParamServer {
       if (pairedObject.second.isFirst) continue;
       if (pairedObject.second.lostCount > 0) continue;
 
-      auto noise          = noiseModel::Diagonal::Variances((Vector(6) << 1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2).finished());
+      auto noise          = noiseModel::Diagonal::Variances(motionDiagonalVarianceEigenVector);
       auto currentObject  = pairedObject.second;
       auto objectIndex    = currentObject.objectIndex;
       auto previousObject = objects[objects.size() - 2][objectIndex];
@@ -1616,8 +1616,8 @@ class mapOptimization : public ParamServer {
     detectionVector.clear();
     tightlyCoupledDetectionVector.clear();
     for (const auto& box : detections->boxes) {
-      detectionVector.emplace_back(box, (Vector(6) << 1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3).finished());
-      tightlyCoupledDetectionVector.emplace_back(box, (Vector(6) << 1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3).finished());
+      detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
+      tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionvarianceEigenVector);
     }
 
     auto egoPoseKey = keyPoseIndices.back();
