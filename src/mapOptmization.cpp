@@ -1617,7 +1617,7 @@ class mapOptimization : public ParamServer {
     tightlyCoupledDetectionVector.clear();
     for (const auto& box : detections->boxes) {
       detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
-      tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionvarianceEigenVector);
+      tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionVarianceEigenVector);
     }
 
     auto egoPoseKey = keyPoseIndices.back();

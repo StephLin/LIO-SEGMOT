@@ -101,7 +101,7 @@ lio_sam:
   constantVelocityDiagonalVarianceVector: [1.0e-3, 1.0e-3, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   motionDiagonalVarianceVector: [1.0e-4, 1.0e-4, 1.0e-2, 1.0e-1, 1.0e-2, 1.0e-2]
   looselyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
-  tightlyCoupledDetectionvarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
+  tightlyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
 
 
 # Navsat (convert GPS coordinates to Cartesian)
