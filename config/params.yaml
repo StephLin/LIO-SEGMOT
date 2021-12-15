@@ -92,8 +92,10 @@ lio_sam:
   globalMapVisualizationPoseDensity: 10.0       # meters, global map visualization keyframe density
   globalMapVisualizationLeafSize: 1.0           # meters, global map visualization cloud density
 
-  # Detection
+  # Dynamic object data association
   detectionMatchThreshold: 19.5
+  looselyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
+  tightlyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
 
   # Factor covariance matrices (as diagonal vectors)
   # priorOdometryDiagonalVarianceVector: [1.0e-2, 1.0e-2, M_PI*M_PI, 1.0e+8, 1.0e+8, 1.0e+8]

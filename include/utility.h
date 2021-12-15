@@ -149,8 +149,13 @@ class ParamServer {
   float globalMapVisualizationPoseDensity;
   float globalMapVisualizationLeafSize;
 
-  // detection
+  // Dynamic object data association
   float detectionMatchThreshold;
+  vector<double> looselyCoupledMatchingVarianceVector;
+  vector<double> tightlyCoupledMatchingVarianceVector;
+
+  Eigen::Matrix<double, 6, 1> looselyCoupledMatchingVarianceEigenVector;
+  Eigen::Matrix<double, 6, 1> tightlyCoupledMatchingVarianceEigenVector;
 
   // Factor covariance matrices (presented as diagonal vectors)
   vector<double> priorOdometryDiagonalVarianceVector;
@@ -253,6 +258,8 @@ class ParamServer {
     nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
     nh.param<float>("lio_sam/detectionMatchThreshod", detectionMatchThreshold, 19.5);
+    nh.param<vector<double>>("lio_sam/looselyCoupledMatchingVarianceVector", looselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_sam/tightlyCoupledMatchingVarianceVector", tightlyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
     nh.param<vector<double>>("lio_sam/priorOdometryDiagonalVarianceVector", priorOdometryDiagonalVarianceVector, {1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8});
     nh.param<vector<double>>("lio_sam/odometryDiagonalVarianceVector", odometryDiagonalVarianceVector, {1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4});
@@ -260,6 +267,9 @@ class ParamServer {
     nh.param<vector<double>>("lio_sam/motionDiagonalVarianceVector", motionDiagonalVarianceVector, {1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2});
     nh.param<vector<double>>("lio_sam/looselyCoupledDetectionVarianceVector", looselyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
     nh.param<vector<double>>("lio_sam/tightlyCoupledDetectionVarianceVector", tightlyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+
+    looselyCoupledMatchingVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(looselyCoupledMatchingVarianceVector.data());
+    tightlyCoupledMatchingVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(tightlyCoupledMatchingVarianceVector.data());
 
     priorOdometryDiagonalVarianceEigenVector    = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(priorOdometryDiagonalVarianceVector.data());
     odometryDiagonalVarianceEigenVector         = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(odometryDiagonalVarianceVector.data());

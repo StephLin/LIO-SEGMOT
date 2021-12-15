@@ -225,6 +225,8 @@ class mapOptimization : public ParamServer {
   BoundingBoxArrayPtr detections;
   std::vector<Detection> detectionVector;
   std::vector<Detection> tightlyCoupledDetectionVector;
+  std::vector<Detection> matchingVector;
+  std::vector<Detection> tightlyCoupledMatchingVector;
   bool detectionIsActive = false;
   std::vector<std::map<uint64_t, ObjectState>> objects;
   visualization_msgs::MarkerArray objectPaths;
@@ -1615,9 +1617,13 @@ class mapOptimization : public ParamServer {
     // Create a vector of Detections.
     detectionVector.clear();
     tightlyCoupledDetectionVector.clear();
+    matchingVector.clear();
+    tightlyCoupledMatchingVector.clear();
     for (const auto& box : detections->boxes) {
       detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
       tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionVarianceEigenVector);
+      matchingVector.emplace_back(box, looselyCoupledMatchingVarianceEigenVector);
+      tightlyCoupledMatchingVector.emplace_back(box, tightlyCoupledMatchingVarianceEigenVector);
     }
 
     auto egoPoseKey = keyPoseIndices.back();
@@ -1639,7 +1645,11 @@ class mapOptimization : public ParamServer {
       std::cout << object.objectIndex << ' ';
 #endif
 
-      std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, detectionVector);
+      if (object.confidence >= 0.9) {
+        std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, tightlyCoupledMatchingVector);
+      } else {
+        std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, matchingVector);
+      }
 
       if (error < detectionMatchThreshold) {  // found
         indicator(i, j)   = 1;
