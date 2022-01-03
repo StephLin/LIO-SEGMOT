@@ -1,0 +1,24 @@
+Header header
+
+jsk_recognition_msgs/BoundingBox detection
+
+geometry_msgs/Pose pose
+geometry_msgs/Pose velocity
+
+bool hasTightlyCoupledDetectionError
+float64 tightlyCoupledDetectionError
+float64 initialTightlyCoupledDetectionError
+
+bool hasLooselyCoupledDetectionError
+float64 looselyCoupledDetectionError
+float64 initialLooselyCoupledDetectionError
+
+bool hasMotionError
+float64 motionError
+float64 initialMotionError
+
+int32 index
+int32 lostCount
+float64 confidence
+bool isTightlyCoupled
+bool isFirst

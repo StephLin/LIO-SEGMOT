@@ -107,6 +107,8 @@ class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pos
   virtual boost::shared_ptr<gtsam::GaussianFactor>
   linearize(const gtsam::Values &c) const override;
 
+  virtual double error(const gtsam::Values &c) const override;
+
   std::size_t size() const {
     return 2;
   }
@@ -178,6 +180,8 @@ class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pos
 
   virtual boost::shared_ptr<gtsam::GaussianFactor>
   linearize(const gtsam::Values &c) const override;
+
+  virtual double error(const gtsam::Values &c) const override;
 
   std::size_t size() const {
     return 1;

@@ -32,6 +32,8 @@ add_message_files(
   DIRECTORY msg
   FILES
   cloud_info.msg
+  ObjectState.msg
+  ObjectStateArray.msg
 )
 
 add_service_files(

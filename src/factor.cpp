@@ -139,6 +139,34 @@ TightlyCoupledDetectionFactor::linearize(const gtsam::Values &c) const {
 }
 
 /* -------------------------------------------------------------------------- */
+
+double TightlyCoupledDetectionFactor::error(const gtsam::Values &c) const {
+  if (active(c)) {
+    // Determine which detection is used to generate the factor function, a.k.a.
+    // the Max-Mixture model
+    size_t index;
+    double error;
+    const auto robotPose   = c.at<gtsam::Pose3>(this->robotPoseKey());
+    const auto objectPose  = c.at<gtsam::Pose3>(this->objectPoseKey());
+    std::tie(index, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
+
+    auto measured   = this->detections[index].getPose();
+    auto noiseModel = this->noiseModels[index];
+
+    const gtsam::Vector b = unwhitenedError(measured, c);
+    if (noiseModel && b.size() != noiseModel->dim())
+      throw std::invalid_argument(
+          boost::str(
+              boost::format(
+                  "NoiseModelFactor: NoiseModel has dimension %1% instead of %2%.") %
+              noiseModel->dim() % b.size()));
+    return 0.5 * noiseModel->distance(b);
+  } else {
+    return 0.0;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                      Loosely-Coupled Detection Factor                      */
 /* -------------------------------------------------------------------------- */
 
@@ -221,6 +249,34 @@ LooselyCoupledDetectionFactor::linearize(const gtsam::Values &c) const {
                                   boost::static_pointer_cast<Constrained>(noiseModel)->unit()));
   else
     return gtsam::GaussianFactor::shared_ptr(new gtsam::JacobianFactor(terms, b));
+}
+
+/* -------------------------------------------------------------------------- */
+
+double LooselyCoupledDetectionFactor::error(const gtsam::Values &c) const {
+  if (active(c)) {
+    // Determine which detection is used to generate the factor function, a.k.a.
+    // the Max-Mixture model
+    size_t index;
+    double error;
+    const auto robotPose   = c.at<gtsam::Pose3>(this->robotPoseKey());
+    const auto objectPose  = c.at<gtsam::Pose3>(this->objectPoseKey());
+    std::tie(index, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
+
+    auto measured   = this->detections[index].getPose();
+    auto noiseModel = this->noiseModels[index];
+
+    const gtsam::Vector b = unwhitenedError(measured, c);
+    if (noiseModel && b.size() != noiseModel->dim())
+      throw std::invalid_argument(
+          boost::str(
+              boost::format(
+                  "NoiseModelFactor: NoiseModel has dimension %1% instead of %2%.") %
+              noiseModel->dim() % b.size()));
+    return 0.5 * noiseModel->distance(b);
+  } else {
+    return 0.0;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
