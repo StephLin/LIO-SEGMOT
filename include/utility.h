@@ -66,13 +66,13 @@ class ParamServer {
 
   std::string robot_id;
 
-  //Topics
+  // Topics
   string pointCloudTopic;
   string imuTopic;
   string odomTopic;
   string gpsTopic;
 
-  //Frames
+  // Frames
   string lidarFrame;
   string baselinkFrame;
   string odometryFrame;
@@ -257,7 +257,7 @@ class ParamServer {
     nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
     nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
-    nh.param<float>("lio_sam/detectionMatchThreshod", detectionMatchThreshold, 19.5);
+    nh.param<float>("lio_sam/detectionMatchThreshold", detectionMatchThreshold, 19.5);
     nh.param<vector<double>>("lio_sam/looselyCoupledMatchingVarianceVector", looselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
     nh.param<vector<double>>("lio_sam/tightlyCoupledMatchingVarianceVector", tightlyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
