@@ -13,8 +13,10 @@ Panels:
         - /Feature Cloud1
         - /Mapping1
         - /Mapping1/Map (cloud)1
+        - /Tracking1
+        - /Tracking1/Dynamic Objects1
       Splitter Ratio: 0.5600000023841858
-    Tree Height: 674
+    Tree Height: 686
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Views
@@ -225,9 +227,7 @@ Visualization Manager:
           Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 0.7900000214576721
           Min Color: 0; 0; 0
-          Min Intensity: 0
           Name: Reg Cloud
           Position Transformer: XYZ
           Queue Size: 10
@@ -271,9 +271,7 @@ Visualization Manager:
           Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 15.077729225158691
           Min Color: 0; 0; 0
-          Min Intensity: 0.019985778257250786
           Name: Edge Feature
           Position Transformer: XYZ
           Queue Size: 10
@@ -301,9 +299,7 @@ Visualization Manager:
           Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 15.100607872009277
           Min Color: 0; 0; 0
-          Min Intensity: 0.0007188677554950118
           Name: Plannar Feature
           Position Transformer: XYZ
           Queue Size: 10
@@ -365,9 +361,7 @@ Visualization Manager:
           Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 15.100604057312012
           Min Color: 0; 0; 0
-          Min Intensity: 0.014545874670147896
           Name: Map (local)
           Position Transformer: XYZ
           Queue Size: 10
@@ -395,9 +389,7 @@ Visualization Manager:
           Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 15.100096702575684
           Min Color: 0; 0; 0
-          Min Intensity: 0.007923072203993797
           Name: Map (global)
           Position Transformer: XYZ
           Queue Size: 10
@@ -471,9 +463,7 @@ Visualization Manager:
           Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 15.100604057312012
           Min Color: 0; 0; 0
-          Min Intensity: 0.014545874670147896
           Name: Loop closure
           Position Transformer: XYZ
           Queue Size: 10
@@ -495,11 +485,11 @@ Visualization Manager:
           Queue Size: 100
           Value: true
         - Class: jsk_rviz_plugin/BoundingBoxArray
-          Enabled: true
+          Enabled: false
           Name: Dynamic Objects
           Topic: /lio_sam/mapping/objects
           Unreliable: false
-          Value: true
+          Value: false
           alpha: 0.800000011920929
           color: 25; 255; 0
           coloring: Label
@@ -507,29 +497,29 @@ Visualization Manager:
           only edge: true
           show coords: true
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /lio_sam/mapping/object_paths
           Name: Dynamic Object Paths
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /lio_sam/mapping/object_labels
           Name: Dynamic Object Labels
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /lio_sam/mapping/object_velocities
           Name: Dynamic Object Predicted Path
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/Marker
           Enabled: true
           Marker Topic: /lio_sam/mapping/tightly_coupled_object_points
@@ -540,6 +530,46 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Mapping
+    - Class: rviz/Group
+      Displays:
+        - Class: jsk_rviz_plugin/BoundingBoxArray
+          Enabled: true
+          Name: Dynamic Objects
+          Topic: /lio_sam/tracking/objects
+          Unreliable: false
+          Value: true
+          alpha: 0.800000011920929
+          color: 25; 255; 0
+          coloring: Label
+          line width: 0.15000000596046448
+          only edge: true
+          show coords: false
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /lio_sam/tracking/object_paths
+          Name: Dynamic Object Paths
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /lio_sam/tracking/object_labels
+          Name: Dynamic Object Labels
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /lio_sam/tracking/object_velocities
+          Name: Dynamic Object Predicted Path
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+      Enabled: true
+      Name: Tracking
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -579,10 +609,10 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1016
+  Height: 1022
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001590000039efc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000000a0049006d006100670065000000002e000001340000000000000000fb000000100044006900730070006c006100790073010000003d0000039e000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000286000000a70000005c00ffffff000000010000011100000435fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002e00000435000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b000000040fc0100000002fb0000000800540069006d00650000000000000004b00000000000000000fb0000000800540069006d00650100000000000004500000000000000000000005da0000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000171000003a8fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000000a0049006d006100670065000000002e000001340000000000000000fb000000100044006900730070006c006100790073010000003b000003a8000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000286000000a70000005c00ffffff000000010000011100000435fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002e00000435000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b000000040fc0100000002fb0000000800540069006d00650000000000000004b00000000000000000fb0000000800540069006d00650100000000000004500000000000000000000005c2000003a800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Tool Properties:
@@ -591,4 +621,4 @@ Window Geometry:
     collapsed: true
   Width: 1849
   X: 71
-  Y: 30
+  Y: 28

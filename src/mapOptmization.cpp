@@ -40,8 +40,8 @@ using BoundingBoxArray         = jsk_recognition_msgs::BoundingBoxArray;
 using BoundingBoxArrayPtr      = jsk_recognition_msgs::BoundingBoxArrayPtr;
 using BoundingBoxArrayConstPtr = jsk_recognition_msgs::BoundingBoxArrayConstPtr;
 /*
-    * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
-    */
+ * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
+ */
 struct PointXYZIRPYT {
   PCL_ADD_POINT4D
   PCL_ADD_INTENSITY;  // preferred way of adding a XYZ+padding
@@ -59,12 +59,13 @@ typedef PointXYZIRPYT PointTypePose;
 
 class ObjectState {
  public:
-  Pose3 pose                 = Pose3::identity();
-  Pose3 velocity             = Pose3::identity();
-  uint64_t poseNodeIndex     = 0;
-  uint64_t velocityNodeIndex = 0;
-  uint64_t objectIndex       = 0;
-  int lostCount              = 0;
+  Pose3 pose                      = Pose3::identity();
+  Pose3 velocity                  = Pose3::identity();
+  uint64_t poseNodeIndex          = 0;
+  uint64_t velocityNodeIndex      = 0;
+  uint64_t objectIndex            = 0;
+  uint64_t objectIndexForTracking = 0;
+  int lostCount                   = 0;
 
   BoundingBox box       = BoundingBox();
   BoundingBox detection = BoundingBox();
@@ -80,22 +81,24 @@ class ObjectState {
   double initialDetectionError = 0;
   double initialMotionError    = 0;
 
-  ObjectState(Pose3 pose                 = Pose3::identity(),
-              Pose3 velocity             = Pose3::identity(),
-              uint64_t poseNodeIndex     = 0,
-              uint64_t velocityNodeIndex = 0,
-              uint64_t objectIndex       = 0,
-              int lostCount              = 0,
-              BoundingBox box            = BoundingBox(),
-              BoundingBox detection      = BoundingBox(),
-              double confidence          = 0,
-              bool isTightlyCoupled      = false,
-              bool isFirst               = false)
+  ObjectState(Pose3 pose                      = Pose3::identity(),
+              Pose3 velocity                  = Pose3::identity(),
+              uint64_t poseNodeIndex          = 0,
+              uint64_t velocityNodeIndex      = 0,
+              uint64_t objectIndex            = 0,
+              uint64_t objectIndexForTracking = 0,
+              int lostCount                   = 0,
+              BoundingBox box                 = BoundingBox(),
+              BoundingBox detection           = BoundingBox(),
+              double confidence               = 0,
+              bool isTightlyCoupled           = false,
+              bool isFirst                    = false)
       : pose(pose),
         velocity(velocity),
         poseNodeIndex(poseNodeIndex),
         velocityNodeIndex(velocityNodeIndex),
         objectIndex(objectIndex),
+        objectIndexForTracking(objectIndexForTracking),
         lostCount(lostCount),
         box(box),
         detection(detection),
@@ -110,6 +113,7 @@ class ObjectState {
                        poseNodeIndex,
                        velocityNodeIndex,
                        objectIndex,
+                       objectIndexForTracking,
                        lostCount,
                        box,
                        detection,
@@ -156,6 +160,10 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubObjectLabels;
   ros::Publisher pubObjectVelocities;
   ros::Publisher pubObjectStates;
+  ros::Publisher pubTrackingObjects;
+  ros::Publisher pubTrackingObjectPaths;
+  ros::Publisher pubTrackingObjectLabels;
+  ros::Publisher pubTrackingObjectVelocities;
 
   ros::ServiceServer srvSaveMap;
 
@@ -241,14 +249,19 @@ class mapOptimization : public ParamServer {
   std::vector<Detection> tightlyCoupledDetectionVector;
   std::vector<Detection> matchingVector;
   std::vector<Detection> tightlyCoupledMatchingVector;
+  std::vector<Detection> dataAssociationVector;
   bool detectionIsActive = false;
   std::vector<std::map<uint64_t, ObjectState>> objects;
   visualization_msgs::MarkerArray objectPaths;
   visualization_msgs::Marker tightlyCoupledObjectPoints;
   visualization_msgs::MarkerArray objectLabels;
   visualization_msgs::MarkerArray objectVelocities;
+  visualization_msgs::MarkerArray trackingObjectPaths;
+  visualization_msgs::MarkerArray trackingObjectLabels;
+  visualization_msgs::MarkerArray trackingObjectVelocities;
   lio_sam::ObjectStateArray objectStates;
   uint64_t numberOfRegisteredObjects = 0;
+  uint64_t numberOfTrackingObjects   = 0;
   bool anyObjectIsTightlyCoupled     = false;
 
   uint64_t numberOfNodes = 0;
@@ -288,6 +301,11 @@ class mapOptimization : public ParamServer {
     pubObjectLabels               = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_labels", 1);
     pubObjectVelocities           = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocities", 1);
     pubObjectStates               = nh.advertise<lio_sam::ObjectStateArray>("lio_sam/mapping/object_states", 1);
+
+    pubTrackingObjects          = nh.advertise<BoundingBoxArray>("lio_sam/tracking/objects", 1);
+    pubTrackingObjectPaths      = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_paths", 1);
+    pubTrackingObjectLabels     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
+    pubTrackingObjectVelocities = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -1409,7 +1427,7 @@ class mapOptimization : public ParamServer {
 
     Eigen::Affine3f transStart   = pclPointToAffine3f(cloudKeyPoses6D->back());
     Eigen::Affine3f transFinal   = pcl::getTransformation(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
-                                                        transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+                                                          transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
     Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
     float x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
@@ -1649,17 +1667,20 @@ class mapOptimization : public ParamServer {
     // active objects at the current stamp
     Eigen::MatrixXi indicator = Eigen::MatrixXi::Zero(objects.back().size() + 1,
                                                       detections->boxes.size());
+    std::vector<int> trackingObjectIndices(detections->boxes.size(), -1);
 
     // Create a vector of Detections.
     detectionVector.clear();
     tightlyCoupledDetectionVector.clear();
     matchingVector.clear();
     tightlyCoupledMatchingVector.clear();
+    dataAssociationVector.clear();
     for (const auto& box : detections->boxes) {
       detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
       tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionVarianceEigenVector);
       matchingVector.emplace_back(box, looselyCoupledMatchingVarianceEigenVector);
       tightlyCoupledMatchingVector.emplace_back(box, tightlyCoupledMatchingVarianceEigenVector);
+      dataAssociationVector.emplace_back(box, dataAssociationVarianceEigenVector);
     }
 
     auto egoPoseKey = keyPoseIndices.back();
@@ -1677,15 +1698,20 @@ class mapOptimization : public ParamServer {
       size_t j;  // detection index with respect to the indicator matrix
       double error;
 
+      size_t dataAssociationJ;
+      double dataAssociationError;
+
 #ifdef MAP_OPTIMIZATION_DEBUG
       std::cout << object.objectIndex << ' ';
 #endif
 
+      auto&& predictedPose = invEgoPose * object.pose;
       if (object.confidence >= 0.9) {
-        std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, tightlyCoupledMatchingVector);
+        std::tie(j, error) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
       } else {
-        std::tie(j, error) = getDetectionIndexAndError(invEgoPose * object.pose, matchingVector);
+        std::tie(j, error) = getDetectionIndexAndError(predictedPose, matchingVector);
       }
+      std::tie(dataAssociationJ, dataAssociationError) = getDetectionIndexAndError(predictedPose, dataAssociationVector);
 
       if (error < detectionMatchThreshold) {  // found
         indicator(i, j)   = 1;
@@ -1718,6 +1744,19 @@ class mapOptimization : public ParamServer {
         ++object.lostCount;
         object.confidence                               = 0.0;
         objectPaths.markers[object.objectIndex].scale.x = 0.3;
+        objectPaths.markers[object.objectIndex].scale.y = 0.3;
+        objectPaths.markers[object.objectIndex].scale.z = 0.3;
+
+        // Use a larger threshold to track object without association in the
+        // factor graph. They are different objects in the factor graph, but in
+        // the tracking (visualization) system, they are the same object.
+        if (dataAssociationError < detectionMatchThreshold) {
+          trackingObjectIndices[dataAssociationJ] = object.objectIndexForTracking;
+        } else {
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.x = 0.3;
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.y = 0.3;
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.z = 0.3;
+        }
       }
 
       ++i;
@@ -1742,6 +1781,50 @@ class mapOptimization : public ParamServer {
         object.velocityNodeIndex = numberOfNodes++;
         object.objectIndex       = numberOfRegisteredObjects++;
         object.isFirst           = true;
+        if (trackingObjectIndices[idx] < 0) {
+          object.objectIndexForTracking = numberOfTrackingObjects++;
+
+          // Initialize a path object (marker) for visualizing path
+          visualization_msgs::Marker marker;
+          marker.id                 = object.objectIndexForTracking;
+          marker.type               = visualization_msgs::Marker::SPHERE_LIST;
+          std_msgs::ColorRGBA color = jsk_topic_tools::colorCategory20(object.objectIndexForTracking);
+          marker.color.a            = 1.0;
+          marker.color.r            = color.r;
+          marker.color.g            = color.g;
+          marker.color.b            = color.b;
+          marker.scale.x            = 0.6;
+          marker.scale.y            = 0.6;
+          marker.scale.z            = 0.6;
+          marker.pose.orientation   = tf::createQuaternionMsgFromYaw(0);
+          trackingObjectPaths.markers.push_back(marker);
+
+          visualization_msgs::Marker labelMarker;
+          labelMarker.id      = object.objectIndexForTracking;
+          labelMarker.type    = visualization_msgs::Marker::TEXT_VIEW_FACING;
+          labelMarker.color.a = 1.0;
+          labelMarker.color.r = color.r;
+          labelMarker.color.g = color.g;
+          labelMarker.color.b = color.b;
+          labelMarker.scale.z = 1.2;
+          labelMarker.text    = "Object " + std::to_string(object.objectIndexForTracking);
+          trackingObjectLabels.markers.push_back(labelMarker);
+
+          visualization_msgs::Marker velocityMarker;
+          velocityMarker.id               = object.objectIndexForTracking;
+          velocityMarker.type             = visualization_msgs::Marker::SPHERE_LIST;
+          velocityMarker.color.a          = 0.5;
+          velocityMarker.color.r          = color.r;
+          velocityMarker.color.g          = color.g;
+          velocityMarker.color.b          = color.b;
+          velocityMarker.scale.x          = 0.6;
+          velocityMarker.scale.x          = 0.6;
+          velocityMarker.scale.x          = 0.6;
+          velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+          trackingObjectVelocities.markers.push_back(velocityMarker);
+        } else {
+          object.objectIndexForTracking = trackingObjectIndices[idx];
+        }
 
         // TODO: Propagate the bounding box in the post-processing
         object.box = detectionVector[idx].getBoundingBox();
@@ -1856,7 +1939,7 @@ class mapOptimization : public ParamServer {
     initialEstimate.clear();
     initialEstimateForAnalysis.clear();
 
-    //save key poses
+    // save key poses
     PointType thisPose3D;
     PointTypePose thisPose6D;
     Pose3 latestEstimate;
@@ -2027,7 +2110,7 @@ class mapOptimization : public ParamServer {
     // Publish TF
     static tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar            = tf::Transform(tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
-                                                  tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+                                                             tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
@@ -2117,11 +2200,16 @@ class mapOptimization : public ParamServer {
       pubLaserCloudDeskewed.publish(cloudInfo.cloud_deskewed);
     }
     // public dynamic objects
-    if (pubObjects.getNumSubscribers() != 0 && detectionIsActive) {
+    if (detectionIsActive) {
       BoundingBoxArray objectMessage;
+      BoundingBoxArray trackingObjectMessage;
       objectMessage.header          = detections->header;
       objectMessage.header.frame_id = odometryFrame;
       objectMessage.header.stamp    = timeLaserInfoStamp;
+
+      trackingObjectMessage.header          = detections->header;
+      trackingObjectMessage.header.frame_id = odometryFrame;
+      trackingObjectMessage.header.stamp    = timeLaserInfoStamp;
 
       tightlyCoupledObjectPoints.header.frame_id = odometryFrame;
       tightlyCoupledObjectPoints.header.stamp    = timeLaserInfoStamp;
@@ -2143,6 +2231,8 @@ class mapOptimization : public ParamServer {
         // Bounding box
         object.box.header.stamp = timeLaserInfoStamp;
         objectMessage.boxes.push_back(object.box);
+        trackingObjectMessage.boxes.push_back(object.box);
+        trackingObjectMessage.boxes.back().label = object.objectIndexForTracking;
 
         // Path
         geometry_msgs::Point point;
@@ -2152,6 +2242,10 @@ class mapOptimization : public ParamServer {
         objectPaths.markers[object.objectIndex].points.push_back(point);
         objectPaths.markers[object.objectIndex].header.frame_id = odometryFrame;
         objectPaths.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+        trackingObjectPaths.markers[object.objectIndexForTracking].points.push_back(point);
+        trackingObjectPaths.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+        trackingObjectPaths.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
 
         // Tightly-coupled nodes (poses)
         if (object.isTightlyCoupled) {
@@ -2165,9 +2259,18 @@ class mapOptimization : public ParamServer {
         objectLabels.markers[object.objectIndex].header.frame_id = odometryFrame;
         objectLabels.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
 
+        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.x = object.box.pose.position.x;
+        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.y = object.box.pose.position.y;
+        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.z = object.box.pose.position.z + 2.0;
+        trackingObjectLabels.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+        trackingObjectLabels.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+
         // Velocity (prediction of path)
         objectVelocities.markers[object.objectIndex].header.frame_id = odometryFrame;
         objectVelocities.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+        trackingObjectVelocities.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+        trackingObjectVelocities.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
 
         // .. Compute the delta pose with respect to the delta time
         auto identity     = gtsam::Pose3::identity();
@@ -2182,6 +2285,7 @@ class mapOptimization : public ParamServer {
           point.y  = nextPose.translation().y();
           point.z  = nextPose.translation().z();
           objectVelocities.markers[object.objectIndex].points.push_back(point);
+          trackingObjectVelocities.markers[object.objectIndexForTracking].points.push_back(point);
         }
 
         // Diagnosis
@@ -2234,6 +2338,10 @@ class mapOptimization : public ParamServer {
       pubTightlyCoupledObjectPoints.publish(tightlyCoupledObjectPoints);
       pubObjectLabels.publish(objectLabels);
       pubObjectVelocities.publish(objectVelocities);
+      pubTrackingObjects.publish(trackingObjectMessage);
+      pubTrackingObjectPaths.publish(trackingObjectPaths);
+      pubTrackingObjectLabels.publish(trackingObjectLabels);
+      pubTrackingObjectVelocities.publish(trackingObjectVelocities);
       pubObjectStates.publish(objectStates);
     }
   }

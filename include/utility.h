@@ -151,9 +151,11 @@ class ParamServer {
 
   // Dynamic object data association
   float detectionMatchThreshold;
+  vector<double> dataAssociationVarianceVector;
   vector<double> looselyCoupledMatchingVarianceVector;
   vector<double> tightlyCoupledMatchingVarianceVector;
 
+  Eigen::Matrix<double, 6, 1> dataAssociationVarianceEigenVector;
   Eigen::Matrix<double, 6, 1> looselyCoupledMatchingVarianceEigenVector;
   Eigen::Matrix<double, 6, 1> tightlyCoupledMatchingVarianceEigenVector;
 
@@ -258,6 +260,7 @@ class ParamServer {
     nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
     nh.param<float>("lio_sam/detectionMatchThreshold", detectionMatchThreshold, 19.5);
+    nh.param<vector<double>>("lio_sam/dataAssociationVarianceVector", dataAssociationVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
     nh.param<vector<double>>("lio_sam/looselyCoupledMatchingVarianceVector", looselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
     nh.param<vector<double>>("lio_sam/tightlyCoupledMatchingVarianceVector", tightlyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
@@ -268,6 +271,7 @@ class ParamServer {
     nh.param<vector<double>>("lio_sam/looselyCoupledDetectionVarianceVector", looselyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
     nh.param<vector<double>>("lio_sam/tightlyCoupledDetectionVarianceVector", tightlyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
+    dataAssociationVarianceEigenVector        = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(dataAssociationVarianceVector.data());
     looselyCoupledMatchingVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(looselyCoupledMatchingVarianceVector.data());
     tightlyCoupledMatchingVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(tightlyCoupledMatchingVarianceVector.data());
 
