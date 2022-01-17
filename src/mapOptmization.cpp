@@ -24,7 +24,7 @@
 #include <gtsam/nonlinear/ISAM2.h>
 
 // #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
-#define MAP_OPTIMIZATION_DEBUG
+// #define MAP_OPTIMIZATION_DEBUG
 
 using namespace gtsam;
 
