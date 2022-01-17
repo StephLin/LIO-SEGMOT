@@ -25,6 +25,7 @@
 
 // #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
 // #define MAP_OPTIMIZATION_DEBUG
+#define ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
 
 using namespace gtsam;
 
@@ -392,10 +393,12 @@ class mapOptimization : public ParamServer {
 
     static double timeLastProcessing = -1;
     if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval) {
+#ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
       std::thread t(&mapOptimization::getDetections, this);
 
       deltaTime          = timeLaserInfoCur - timeLastProcessing;
       timeLastProcessing = timeLaserInfoCur;
+#endif
 
       updateInitialGuess();
 
@@ -405,7 +408,9 @@ class mapOptimization : public ParamServer {
 
       scan2MapOptimization();
 
+#ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
       t.join();
+#endif
 
       saveKeyFramesAndFactor();
 
@@ -1935,6 +1940,7 @@ class mapOptimization : public ParamServer {
     // loop factor
     addLoopFactor();
 
+#ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
     // perform dynamic object propagation
     propagateObjectPoses();
 
@@ -1946,6 +1952,7 @@ class mapOptimization : public ParamServer {
 
     // stable pose factor (for multi-object tracking)
     addStablePoseFactor();
+#endif
 
 #ifdef MAP_OPTIMIZATION_DEBUG
     std::cout << "****************************************************" << endl;
@@ -2021,59 +2028,61 @@ class mapOptimization : public ParamServer {
     updatePath(thisPose6D);
 
     // save dynamic objects
-    size_t i = 0;
-    for (auto& pairedObject : objects.back()) {
-      auto& object = pairedObject.second;
+    if (objects.size() > 0) {
+      size_t i = 0;
+      for (auto& pairedObject : objects.back()) {
+        auto& object = pairedObject.second;
 
 #ifdef MAP_OPTIMIZATION_DEBUG
-      std::cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
-                << object.pose << "\n"
-                << "VELOCITY ::\n"
-                << object.velocity << "\n";
+        std::cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
+                  << object.pose << "\n"
+                  << "VELOCITY ::\n"
+                  << object.velocity << "\n";
 #endif
 
-      object.pose = isamCurrentEstimate.at<Pose3>(object.poseNodeIndex);
+        object.pose = isamCurrentEstimate.at<Pose3>(object.poseNodeIndex);
 #ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
-      if (!object.isFirst) {
-        object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
-      }
+        if (!object.isFirst) {
+          object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
+        }
 #else
-      object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
+        object.velocity = isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex);
 #endif
 
 #ifdef MAP_OPTIMIZATION_DEBUG
-      std::cout << "(OBJECT " << object.objectIndex << ") [AFTER ]\nPOSITION ::\n"
-                << object.pose << "\n"
-                << "VELOCITY ::\n"
-                << object.velocity << "\n\n";
+        std::cout << "(OBJECT " << object.objectIndex << ") [AFTER ]\nPOSITION ::\n"
+                  << object.pose << "\n"
+                  << "VELOCITY ::\n"
+                  << object.velocity << "\n\n";
 #endif
 
-      // TODO: Reproduce the post-processing of tracking (refer to FG-3DMOT)
-      // // Check if there is any detection belongs to the object.
-      // int index;
-      // double error;
-      // std::tie(index, error) = getDetectionIndexAndError(object.pose, detectionVector);
+        // TODO: Reproduce the post-processing of tracking (refer to FG-3DMOT)
+        // // Check if there is any detection belongs to the object.
+        // int index;
+        // double error;
+        // std::tie(index, error) = getDetectionIndexAndError(object.pose, detectionVector);
 
-      // if (error < detectionMatchThreshold) {  // found
-      // object.box = detections->boxes[index];
+        // if (error < detectionMatchThreshold) {  // found
+        // object.box = detections->boxes[index];
 
-      auto p                     = object.pose.translation();
-      object.box.pose.position.x = p.x();
-      object.box.pose.position.y = p.y();
-      object.box.pose.position.z = p.z();
+        auto p                     = object.pose.translation();
+        object.box.pose.position.x = p.x();
+        object.box.pose.position.y = p.y();
+        object.box.pose.position.z = p.z();
 
-      auto r                      = object.pose.rotation();
-      object.box.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r.roll(), r.pitch(), r.yaw());
+        auto r                      = object.pose.rotation();
+        object.box.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r.roll(), r.pitch(), r.yaw());
 
-      object.box.header.frame_id = odometryFrame;
-      object.box.label           = object.objectIndex;
-      // object.confidence          = object.box.value;
+        object.box.header.frame_id = odometryFrame;
+        object.box.label           = object.objectIndex;
+        // object.confidence          = object.box.value;
 
-      // } else {  // lost
-      //   object.confidence = 0;
-      // }
+        // } else {  // lost
+        //   object.confidence = 0;
+        // }
 
-      ++i;
+        ++i;
+      }
     }
   }
 
