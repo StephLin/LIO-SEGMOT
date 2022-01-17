@@ -174,6 +174,13 @@ class ParamServer {
   Eigen::Matrix<double, 6, 1> looselyCoupledDetectionVarianceEigenVector;
   Eigen::Matrix<double, 6, 1> tightlyCoupledDetectionVarianceEigenVector;
 
+  // Gentle coupling options
+  int numberOfPreLooseCouplingSteps;
+  int numberOfInterLooseCouplingSteps;
+  float tightCouplingDetectionErrorThreshold;
+
+  float objectIsTurningThreshold;
+
   ParamServer() {
     nh.param<std::string>("/robot_id", robot_id, "roboat");
 
@@ -281,6 +288,12 @@ class ParamServer {
     motionDiagonalVarianceEigenVector           = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(motionDiagonalVarianceVector.data());
     looselyCoupledDetectionVarianceEigenVector  = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(looselyCoupledDetectionVarianceVector.data());
     tightlyCoupledDetectionVarianceEigenVector  = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(tightlyCoupledDetectionVarianceVector.data());
+
+    nh.param<int>("lio_sam/numberOfPreLooseCouplingSteps", numberOfPreLooseCouplingSteps, 10);
+    nh.param<int>("lio_sam/numberOfInterLooseCouplingSteps", numberOfInterLooseCouplingSteps, 0);
+    nh.param<float>("lio_sam/tightCouplingDetectionErrorThreshold", tightCouplingDetectionErrorThreshold, 500.0);
+
+    nh.param<float>("lio_sam/objectIsTurningThreshold", objectIsTurningThreshold, 30);
 
     usleep(100);
   }

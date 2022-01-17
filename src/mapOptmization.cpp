@@ -66,6 +66,7 @@ class ObjectState {
   uint64_t objectIndex            = 0;
   uint64_t objectIndexForTracking = 0;
   int lostCount                   = 0;
+  int trackScore                  = 0;
 
   BoundingBox box       = BoundingBox();
   BoundingBox detection = BoundingBox();
@@ -88,6 +89,7 @@ class ObjectState {
               uint64_t objectIndex            = 0,
               uint64_t objectIndexForTracking = 0,
               int lostCount                   = 0,
+              int trackScore                  = 0,
               BoundingBox box                 = BoundingBox(),
               BoundingBox detection           = BoundingBox(),
               double confidence               = 0,
@@ -100,6 +102,7 @@ class ObjectState {
         objectIndex(objectIndex),
         objectIndexForTracking(objectIndexForTracking),
         lostCount(lostCount),
+        trackScore(trackScore),
         box(box),
         detection(detection),
         confidence(confidence),
@@ -115,11 +118,17 @@ class ObjectState {
                        objectIndex,
                        objectIndexForTracking,
                        lostCount,
+                       trackScore,
                        box,
                        detection,
                        confidence,
                        isTightlyCoupled,
                        isFirst);
+  }
+
+  bool isTurning(float threshold) const {
+    auto rot = gtsam::traits<gtsam::Rot3>::Local(gtsam::Rot3::identity(), this->velocity.rotation());
+    return rot.maxCoeff() > threshold;
   }
 };
 
@@ -1583,8 +1592,6 @@ class mapOptimization : public ParamServer {
       nextObject.pose              = nextObject.pose * deltaPose;
       nextObject.poseNodeIndex     = numberOfNodes++;
       nextObject.velocityNodeIndex = numberOfNodes++;
-      nextObject.box               = pairedObject.second.box;
-      nextObject.confidence        = pairedObject.second.confidence;
       nextObject.isFirst           = false;
 
       initialEstimate.insert(nextObject.poseNodeIndex, nextObject.pose);
@@ -1706,7 +1713,7 @@ class mapOptimization : public ParamServer {
 #endif
 
       auto&& predictedPose = invEgoPose * object.pose;
-      if (object.confidence >= 0.9) {
+      if (object.trackScore >= numberOfPreLooseCouplingSteps) {
         std::tie(j, error) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
       } else {
         std::tie(j, error) = getDetectionIndexAndError(predictedPose, matchingVector);
@@ -1714,22 +1721,44 @@ class mapOptimization : public ParamServer {
       std::tie(dataAssociationJ, dataAssociationError) = getDetectionIndexAndError(predictedPose, dataAssociationVector);
 
       if (error < detectionMatchThreshold) {  // found
-        indicator(i, j)   = 1;
-        object.lostCount  = 0;
-        object.confidence = min(object.confidence + 0.1, 1.0);
-        object.detection  = detections->boxes[j];
+        indicator(i, j)  = 1;
+        object.lostCount = 0;
+        // The maximum of `trackScore` is `numberOfPreLooseCouplingSteps` + 1
+        if (object.trackScore <= numberOfPreLooseCouplingSteps) {
+          ++object.trackScore;
+        }
+        object.detection = detections->boxes[j];
 
-        if (object.confidence >= 1.0) {
-          anyObjectIsTightlyCoupled = true;
-          object.isTightlyCoupled   = true;
-          gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
-                                                       object.poseNodeIndex,
-                                                       tightlyCoupledDetectionVector));
-          object.tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
-                                                                                                      object.poseNodeIndex,
-                                                                                                      tightlyCoupledDetectionVector);
-          object.initialDetectionError            = object.tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+        if (object.trackScore >= numberOfPreLooseCouplingSteps + 1) {
+          // Use a tighter threshold to determine if this detection is good for
+          // coupling. If this detection does not meet the requirement, the
+          // object will be loosely-coupled, and the corresponding `trackScore`
+          // will be deducted.
+          auto tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
+                                                                                                    object.poseNodeIndex,
+                                                                                                    tightlyCoupledDetectionVector);
+          auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+          if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold)) {
+            anyObjectIsTightlyCoupled = true;
+            object.isTightlyCoupled   = true;
+            gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
+                                                         object.poseNodeIndex,
+                                                         tightlyCoupledDetectionVector));
+            object.tightlyCoupledDetectionFactorPtr = tightlyCoupledDetectionFactorPtr;
+            object.initialDetectionError            = detectionError;
+          } else {
+            object.trackScore -= numberOfInterLooseCouplingSteps;
+            object.isTightlyCoupled = false;
+            gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                         object.poseNodeIndex,
+                                                         detectionVector));
+            object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
+                                                                                                        object.poseNodeIndex,
+                                                                                                        detectionVector);
+            object.initialDetectionError            = object.looselyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+          }
         } else {
+          // Pre-loosely coupled detection to stabilize the object velocity
           object.isTightlyCoupled = false;
           gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
                                                        object.poseNodeIndex,
