@@ -2090,7 +2090,7 @@ class mapOptimization : public ParamServer {
     if (cloudKeyPoses3D->points.empty())
       return;
 
-    if (aLoopIsClosed == true) {
+    if (aLoopIsClosed || anyObjectIsTightlyCoupled) {
       // clear map cache
       laserCloudMapContainer.clear();
       // clear path
