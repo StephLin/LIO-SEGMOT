@@ -94,23 +94,23 @@ lio_sam:
 
   # Dynamic object data association
   detectionMatchThreshold: 19.5
-  dataAssociationVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 2.0e-2, 1.0e-2, 1.0e-2]
+  dataAssociationVarianceVector: [2.0e-4, 2.0e-4, 2.0e-3, 2.0e-2, 1.0e-2, 1.0e-2]
   looselyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
-  tightlyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
+  tightlyCoupledMatchingVarianceVector: [1.0e-6, 1.0e-6, 1.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
 
   # Factor covariance matrices (as diagonal vectors)
   # priorOdometryDiagonalVarianceVector: [1.0e-2, 1.0e-2, M_PI*M_PI, 1.0e+8, 1.0e+8, 1.0e+8]
   # odometryDiagonalVarianceVector: [1.0e-6, 1.0e-6, 1.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
   constantVelocityDiagonalVarianceVector: [1.0e-3, 1.0e-3, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   motionDiagonalVarianceVector: [1.0e-4, 1.0e-4, 1.0e-2, 1.0e-1, 1.0e-2, 1.0e-2]
-  looselyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
-  tightlyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-2, 2.0e-3, 2.0e-3]
+  looselyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
+  tightlyCoupledDetectionVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
 
-  numberOfPreLooseCouplingSteps: 10
+  numberOfPreLooseCouplingSteps: 6
   numberOfInterLooseCouplingSteps: 0
-  tightCouplingDetectionErrorThreshold: 500.0  # 50.0
+  tightCouplingDetectionErrorThreshold: 80.0  # 50.0
 
-  objectIsTurningThreshold: 30 # 0.20 rad
+  objectIsTurningThreshold: 0.5 # 0.20 rad
 
 
 # Navsat (convert GPS coordinates to Cartesian)
