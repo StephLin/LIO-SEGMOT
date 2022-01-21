@@ -1441,7 +1441,7 @@ class mapOptimization : public ParamServer {
 
     Eigen::Affine3f transStart   = pclPointToAffine3f(cloudKeyPoses6D->back());
     Eigen::Affine3f transFinal   = pcl::getTransformation(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
-                                                          transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+                                                        transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
     Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
     float x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
@@ -1671,8 +1671,23 @@ class mapOptimization : public ParamServer {
   void addDetectionFactor() {
     anyObjectIsTightlyCoupled = false;
 
-    // Skip the process if there is no detection found
-    if (!detectionIsActive || detections->boxes.size() == 0) return;
+    if (detections->boxes.size() == 0 && objects.size() == 0) {
+      // Skip the process if there is no detection and no active moving objects
+      return;
+    } else if (detections->boxes.size() == 0 && objects.size() > 0) {
+      // Set every moving object as lost if there is no detection
+      for (auto& pairedObject : objects.back()) {
+        auto& object = pairedObject.second;
+        ++object.lostCount;
+        object.confidence                               = 0.0;
+        objectPaths.markers[object.objectIndex].scale.x = 0.3;
+        objectPaths.markers[object.objectIndex].scale.y = 0.3;
+        objectPaths.markers[object.objectIndex].scale.z = 0.3;
+      }
+      return;
+    }
+    // After the above condition, the following process will suppose that there
+    // exist at least one detection in this step
 
     // Initialize an indicator matrix for data association of objects and
     // detections, where we secretly add a row to the matrix in case of no
@@ -2148,7 +2163,7 @@ class mapOptimization : public ParamServer {
     // Publish TF
     static tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar            = tf::Transform(tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
-                                                             tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+                                                  tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
