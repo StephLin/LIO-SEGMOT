@@ -1852,8 +1852,8 @@ class mapOptimization : public ParamServer {
           velocityMarker.color.g          = color.g;
           velocityMarker.color.b          = color.b;
           velocityMarker.scale.x          = 0.6;
-          velocityMarker.scale.x          = 0.6;
-          velocityMarker.scale.x          = 0.6;
+          velocityMarker.scale.y          = 0.6;
+          velocityMarker.scale.z          = 0.6;
           velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
           trackingObjectVelocities.markers.push_back(velocityMarker);
         } else {
@@ -1899,8 +1899,8 @@ class mapOptimization : public ParamServer {
         velocityMarker.color.g          = color.g;
         velocityMarker.color.b          = color.b;
         velocityMarker.scale.x          = 0.6;
-        velocityMarker.scale.x          = 0.6;
-        velocityMarker.scale.x          = 0.6;
+        velocityMarker.scale.y          = 0.6;
+        velocityMarker.scale.z          = 0.6;
         velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
         objectVelocities.markers.push_back(velocityMarker);
 
@@ -2253,6 +2253,9 @@ class mapOptimization : public ParamServer {
       tightlyCoupledObjectPoints.header.stamp    = timeLaserInfoStamp;
 
       for (auto& marker : objectVelocities.markers) {
+        marker.points.clear();
+      }
+      for (auto& marker : trackingObjectVelocities.markers) {
         marker.points.clear();
       }
 
