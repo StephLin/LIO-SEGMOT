@@ -1441,7 +1441,7 @@ class mapOptimization : public ParamServer {
 
     Eigen::Affine3f transStart   = pclPointToAffine3f(cloudKeyPoses6D->back());
     Eigen::Affine3f transFinal   = pcl::getTransformation(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
-                                                        transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+                                                          transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
     Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
     float x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
@@ -2163,7 +2163,7 @@ class mapOptimization : public ParamServer {
     // Publish TF
     static tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar            = tf::Transform(tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
-                                                  tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+                                                             tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
