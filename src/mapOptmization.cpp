@@ -22,8 +22,6 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <gtsam/nonlinear/ISAM2.h>
-
 // #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
 // #define MAP_OPTIMIZATION_DEBUG
 #define ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
