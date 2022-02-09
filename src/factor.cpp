@@ -98,14 +98,13 @@ TightlyCoupledDetectionFactor::linearize(const gtsam::Values &c) const {
 
   // Determine which detection is used to generate the factor function, a.k.a.
   // the Max-Mixture model
-  size_t index;
   double error;
-  const auto robotPose   = c.at<gtsam::Pose3>(this->robotPoseKey());
-  const auto objectPose  = c.at<gtsam::Pose3>(this->objectPoseKey());
-  std::tie(index, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
+  const auto robotPose                  = c.at<gtsam::Pose3>(this->robotPoseKey());
+  const auto objectPose                 = c.at<gtsam::Pose3>(this->objectPoseKey());
+  std::tie(cachedDetectionIndex, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
 
-  auto measured   = this->detections[index].getPose();
-  auto noiseModel = this->noiseModels[index];
+  auto measured   = this->detections[cachedDetectionIndex].getPose();
+  auto noiseModel = this->noiseModels[cachedDetectionIndex];
 
   // Call evaluate error to get Jacobians and RHS vector b
   std::vector<gtsam::Matrix> A(size());
@@ -211,14 +210,13 @@ LooselyCoupledDetectionFactor::linearize(const gtsam::Values &c) const {
 
   // Determine which detection is used to generate the factor function, a.k.a.
   // the Max-Mixture model
-  size_t index;
   double error;
-  const auto robotPose   = c.at<gtsam::Pose3>(this->robotPoseKey());
-  const auto objectPose  = c.at<gtsam::Pose3>(this->objectPoseKey());
-  std::tie(index, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
+  const auto robotPose                  = c.at<gtsam::Pose3>(this->robotPoseKey());
+  const auto objectPose                 = c.at<gtsam::Pose3>(this->objectPoseKey());
+  std::tie(cachedDetectionIndex, error) = getDetectionIndexAndError(robotPose.inverse() * objectPose, this->detections);
 
-  auto measured   = this->detections[index].getPose();
-  auto noiseModel = this->noiseModels[index];
+  auto measured   = this->detections[cachedDetectionIndex].getPose();
+  auto noiseModel = this->noiseModels[cachedDetectionIndex];
 
   // Call evaluate error to get Jacobians and RHS vector b
   std::vector<gtsam::Matrix> A(size());

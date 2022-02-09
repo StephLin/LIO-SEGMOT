@@ -4,6 +4,7 @@
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/detection.h"
 #include "lio_sam/save_map.h"
+#include "solver.h"
 #include "utility.h"
 
 #include <visualization_msgs/MarkerArray.h>
@@ -20,8 +21,6 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-
-#include <gtsam/nonlinear/ISAM2.h>
 
 // #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
 // #define MAP_OPTIMIZATION_DEBUG
@@ -140,7 +139,7 @@ class mapOptimization : public ParamServer {
   Values initialEstimate;
   Values initialEstimateForAnalysis;
   Values optimizedEstimate;
-  ISAM2* isam;
+  MaxMixtureISAM2* isam;
   Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
@@ -280,7 +279,7 @@ class mapOptimization : public ParamServer {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
     parameters.relinearizeSkip      = 1;
-    isam                            = new ISAM2(parameters);
+    isam                            = new MaxMixtureISAM2(parameters);
 
     pubKeyPoses                 = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1);
     pubLaserCloudSurround       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1);
@@ -1778,7 +1777,8 @@ class mapOptimization : public ParamServer {
               object.isTightlyCoupled   = true;
               gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
                                                            object.poseNodeIndex,
-                                                           tightlyCoupledDetectionVector));
+                                                           tightlyCoupledDetectionVector,
+                                                           j));
               object.tightlyCoupledDetectionFactorPtr = tightlyCoupledDetectionFactorPtr;
               object.initialDetectionError            = detectionError;
             } else {
@@ -1786,7 +1786,8 @@ class mapOptimization : public ParamServer {
               object.isTightlyCoupled = false;
               gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
                                                            object.poseNodeIndex,
-                                                           detectionVector));
+                                                           detectionVector,
+                                                           j));
               object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                           object.poseNodeIndex,
                                                                                                           detectionVector);
@@ -1797,7 +1798,8 @@ class mapOptimization : public ParamServer {
             object.isTightlyCoupled = false;
             gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
                                                          object.poseNodeIndex,
-                                                         detectionVector));
+                                                         detectionVector,
+                                                         j));
             object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                         object.poseNodeIndex,
                                                                                                         detectionVector);
@@ -1947,7 +1949,8 @@ class mapOptimization : public ParamServer {
         // detection factor
         gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
                                                      object.poseNodeIndex,
-                                                     detectionVector));
+                                                     detectionVector,
+                                                     idx));
         objects.back()[object.objectIndex].looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                                                 object.poseNodeIndex,
                                                                                                                                 detectionVector);

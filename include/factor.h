@@ -1,6 +1,8 @@
 // Copyright 2021 Yu-Kai Lin. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+#pragma once
+
 #include <stdexcept>
 #include <tuple>
 #include <vector>
@@ -48,6 +50,8 @@ class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pos
   std::vector<Detection> detections;
   std::vector<gtsam::noiseModel::Diagonal::shared_ptr> noiseModels;
 
+  mutable int cachedDetectionIndex = -1;
+
  public:
   /** Constructor */
   TightlyCoupledDetectionFactor(gtsam::Key robotPoseKey,
@@ -57,6 +61,21 @@ class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pos
              robotPoseKey,
              objectPoseKey),
         detections(detections) {
+    for (const auto &detection : detections) {
+      this->noiseModels.push_back(detection.getDiagonal());
+    }
+  }
+
+  /** Contructor with cached detection index */
+  TightlyCoupledDetectionFactor(gtsam::Key robotPoseKey,
+                                gtsam::Key objectPoseKey,
+                                std::vector<Detection> detections,
+                                int cachedDetectionIndex)
+      : Base(boost::shared_ptr<gtsam::noiseModel::Diagonal>(),
+             robotPoseKey,
+             objectPoseKey),
+        detections(detections),
+        cachedDetectionIndex(cachedDetectionIndex) {
     for (const auto &detection : detections) {
       this->noiseModels.push_back(detection.getDiagonal());
     }
@@ -79,6 +98,8 @@ class TightlyCoupledDetectionFactor : public gtsam::NoiseModelFactor2<gtsam::Pos
 
   gtsam::Key robotPoseKey() const { return key1(); }
   gtsam::Key objectPoseKey() const { return key2(); }
+  const std::vector<Detection> &getDetections() const { return this->detections; }
+  const int getCachedDetectionIndex() const { return this->cachedDetectionIndex; }
 
   virtual gtsam::Vector
   evaluateError(const gtsam::Pose3 &robotPose,
@@ -127,6 +148,8 @@ class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pos
 
   gtsam::Key robotPoseKey_;
 
+  mutable int cachedDetectionIndex = -1;
+
  public:
   /** Constructor */
   LooselyCoupledDetectionFactor(gtsam::Key robotPoseKey,
@@ -135,6 +158,20 @@ class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pos
       : Base(boost::shared_ptr<gtsam::noiseModel::Diagonal>(), objectPoseKey),
         robotPoseKey_(robotPoseKey),
         detections(detections) {
+    for (const auto &detection : detections) {
+      this->noiseModels.push_back(detection.getDiagonal());
+    }
+  }
+
+  /** Contructor with cached detection index */
+  LooselyCoupledDetectionFactor(gtsam::Key robotPoseKey,
+                                gtsam::Key objectPoseKey,
+                                std::vector<Detection> detections,
+                                int cachedDetectionIndex)
+      : Base(boost::shared_ptr<gtsam::noiseModel::Diagonal>(), objectPoseKey),
+        robotPoseKey_(robotPoseKey),
+        detections(detections),
+        cachedDetectionIndex(cachedDetectionIndex) {
     for (const auto &detection : detections) {
       this->noiseModels.push_back(detection.getDiagonal());
     }
@@ -157,6 +194,8 @@ class LooselyCoupledDetectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pos
 
   gtsam::Key robotPoseKey() const { return this->robotPoseKey_; }
   gtsam::Key objectPoseKey() const { return this->key(); }
+  const std::vector<Detection> &getDetections() const { return this->detections; }
+  const int getCachedDetectionIndex() const { return this->cachedDetectionIndex; }
 
   virtual gtsam::Vector
   evaluateError(const gtsam::Pose3 &robotPose,
