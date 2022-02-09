@@ -1754,6 +1754,11 @@ class mapOptimization : public ParamServer {
           // A tricky part: set the lostCount to a large number so that the
           // system will subtly remove this ``retired'' object
           object.lostCount = std::numeric_limits<int>::max();
+
+          // However, we should make the path visually active
+          objectPaths.markers[object.objectIndex].scale.x = 0.6;
+          objectPaths.markers[object.objectIndex].scale.y = 0.6;
+          objectPaths.markers[object.objectIndex].scale.z = 0.6;
         } else {
           indicator(i, j)  = 1;
           object.lostCount = 0;
@@ -1764,10 +1769,10 @@ class mapOptimization : public ParamServer {
           object.detection = detections->boxes[j];
 
           if (object.trackScore >= numberOfPreLooseCouplingSteps + 1) {
-            // Use a tighter threshold to determine if this detection is good for
-            // coupling. If this detection does not meet the requirement, the
-            // object will be loosely-coupled, and the corresponding `trackScore`
-            // will be deducted.
+            // Use a tighter threshold to determine if this detection is good
+            // for coupling. If this detection does not meet the requirement,
+            // the object will be loosely-coupled, and the corresponding
+            // `trackScore` will be deducted.
             auto tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
                                                                                                       object.poseNodeIndex,
                                                                                                       tightlyCoupledDetectionVector);
