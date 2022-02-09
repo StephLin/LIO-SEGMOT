@@ -112,6 +112,9 @@ lio_sam:
 
   objectIsTurningThreshold: 0.5 # 0.20 rad
 
+  # Tracking
+  trackingStepsForLostObject: 3
+
 
 # Navsat (convert GPS coordinates to Cartesian)
 navsat:

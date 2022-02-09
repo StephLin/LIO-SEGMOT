@@ -181,6 +181,9 @@ class ParamServer {
 
   float objectIsTurningThreshold;
 
+  // Tracking
+  int trackingStepsForLostObject;
+
   ParamServer() {
     nh.param<std::string>("/robot_id", robot_id, "roboat");
 
@@ -294,6 +297,8 @@ class ParamServer {
     nh.param<float>("lio_sam/tightCouplingDetectionErrorThreshold", tightCouplingDetectionErrorThreshold, 500.0);
 
     nh.param<float>("lio_sam/objectIsTurningThreshold", objectIsTurningThreshold, 30);
+
+    nh.param<int>("lio_sam/trackingStepsForLostObject", trackingStepsForLostObject, 3);
 
     usleep(100);
   }
