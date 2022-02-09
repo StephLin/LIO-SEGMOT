@@ -1754,11 +1754,6 @@ class mapOptimization : public ParamServer {
           // A tricky part: set the lostCount to a large number so that the
           // system will subtly remove this ``retired'' object
           object.lostCount = std::numeric_limits<int>::max();
-
-          // However, we should make the path visually active
-          objectPaths.markers[object.objectIndex].scale.x = 0.6;
-          objectPaths.markers[object.objectIndex].scale.y = 0.6;
-          objectPaths.markers[object.objectIndex].scale.z = 0.6;
         } else {
           indicator(i, j)  = 1;
           object.lostCount = 0;
