@@ -1585,25 +1585,30 @@ class mapOptimization : public ParamServer {
 
     for (const auto& pairedObject : objects.back()) {
       // Drop the object if it is lost for a long time
-      // TODO: Set a larger number
-      if (pairedObject.second.lostCount >= 1) continue;
+      if (pairedObject.second.lostCount > trackingStepsForLostObject) continue;
 
       // Propagate the object using the constant velocity model as well as
       // register a new variable node for the object
-      auto identity                = Pose3::identity();
-      auto nextObject              = pairedObject.second.clone();
-      auto deltaPoseVec            = gtsam::traits<Pose3>::Local(identity, nextObject.velocity) * deltaTime;
-      auto deltaPose               = gtsam::traits<Pose3>::Retract(identity, deltaPoseVec);
-      nextObject.pose              = nextObject.pose * deltaPose;
-      nextObject.poseNodeIndex     = numberOfNodes++;
-      nextObject.velocityNodeIndex = numberOfNodes++;
-      nextObject.isFirst           = false;
+      auto identity     = Pose3::identity();
+      auto nextObject   = pairedObject.second.clone();
+      auto deltaPoseVec = gtsam::traits<Pose3>::Local(identity, nextObject.velocity) * deltaTime;
+      auto deltaPose    = gtsam::traits<Pose3>::Retract(identity, deltaPoseVec);
+      nextObject.pose   = nextObject.pose * deltaPose;
 
-      initialEstimate.insert(nextObject.poseNodeIndex, nextObject.pose);
-      initialEstimate.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+      nextObject.isFirst = false;
+      if (pairedObject.second.lostCount == 0) {
+        nextObject.poseNodeIndex     = numberOfNodes++;
+        nextObject.velocityNodeIndex = numberOfNodes++;
 
-      initialEstimateForAnalysis.insert(nextObject.poseNodeIndex, nextObject.pose);
-      initialEstimateForAnalysis.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+        initialEstimate.insert(nextObject.poseNodeIndex, nextObject.pose);
+        initialEstimate.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+
+        initialEstimateForAnalysis.insert(nextObject.poseNodeIndex, nextObject.pose);
+        initialEstimateForAnalysis.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+      } else {
+        nextObject.poseNodeIndex     = -1;
+        nextObject.velocityNodeIndex = -1;
+      }
 
       nextObjects[pairedObject.first] = nextObject;
     }
@@ -1740,34 +1745,55 @@ class mapOptimization : public ParamServer {
       }
       std::tie(dataAssociationJ, dataAssociationError) = getDetectionIndexAndError(predictedPose, dataAssociationVector);
 
+      // TODO: Increase code readability
       if (error < detectionMatchThreshold) {  // found
-        indicator(i, j)  = 1;
-        object.lostCount = 0;
-        // The maximum of `trackScore` is `numberOfPreLooseCouplingSteps` + 1
-        if (object.trackScore <= numberOfPreLooseCouplingSteps) {
-          ++object.trackScore;
-        }
-        object.detection = detections->boxes[j];
+        // If the object is lost, we still need to create a new moving object
+        // for it. In this way we would temporarily skip it and later we will
+        // add the object properly
+        if (object.lostCount > 0) {
+          trackingObjectIndices[j] = object.objectIndexForTracking;
+          // A tricky part: set the lostCount to a large number so that the
+          // system will subtly remove this ``retired'' object
+          object.lostCount = std::numeric_limits<int>::max();
+        } else {
+          indicator(i, j)  = 1;
+          object.lostCount = 0;
+          // The maximum of `trackScore` is `numberOfPreLooseCouplingSteps` + 1
+          if (object.trackScore <= numberOfPreLooseCouplingSteps) {
+            ++object.trackScore;
+          }
+          object.detection = detections->boxes[j];
 
-        if (object.trackScore >= numberOfPreLooseCouplingSteps + 1) {
-          // Use a tighter threshold to determine if this detection is good for
-          // coupling. If this detection does not meet the requirement, the
-          // object will be loosely-coupled, and the corresponding `trackScore`
-          // will be deducted.
-          auto tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
-                                                                                                    object.poseNodeIndex,
-                                                                                                    tightlyCoupledDetectionVector);
-          auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
-          if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold)) {
-            anyObjectIsTightlyCoupled = true;
-            object.isTightlyCoupled   = true;
-            gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
-                                                         object.poseNodeIndex,
-                                                         tightlyCoupledDetectionVector));
-            object.tightlyCoupledDetectionFactorPtr = tightlyCoupledDetectionFactorPtr;
-            object.initialDetectionError            = detectionError;
+          if (object.trackScore >= numberOfPreLooseCouplingSteps + 1) {
+            // Use a tighter threshold to determine if this detection is good for
+            // coupling. If this detection does not meet the requirement, the
+            // object will be loosely-coupled, and the corresponding `trackScore`
+            // will be deducted.
+            auto tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
+                                                                                                      object.poseNodeIndex,
+                                                                                                      tightlyCoupledDetectionVector);
+            auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+            if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold)) {
+              anyObjectIsTightlyCoupled = true;
+              object.isTightlyCoupled   = true;
+              gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
+                                                           object.poseNodeIndex,
+                                                           tightlyCoupledDetectionVector));
+              object.tightlyCoupledDetectionFactorPtr = tightlyCoupledDetectionFactorPtr;
+              object.initialDetectionError            = detectionError;
+            } else {
+              object.trackScore -= numberOfInterLooseCouplingSteps;
+              object.isTightlyCoupled = false;
+              gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                           object.poseNodeIndex,
+                                                           detectionVector));
+              object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
+                                                                                                          object.poseNodeIndex,
+                                                                                                          detectionVector);
+              object.initialDetectionError            = object.looselyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+            }
           } else {
-            object.trackScore -= numberOfInterLooseCouplingSteps;
+            // Pre-loosely coupled detection to stabilize the object velocity
             object.isTightlyCoupled = false;
             gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
                                                          object.poseNodeIndex,
@@ -1777,21 +1803,11 @@ class mapOptimization : public ParamServer {
                                                                                                         detectionVector);
             object.initialDetectionError            = object.looselyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
           }
-        } else {
-          // Pre-loosely coupled detection to stabilize the object velocity
-          object.isTightlyCoupled = false;
-          gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
-                                                       object.poseNodeIndex,
-                                                       detectionVector));
-          object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
-                                                                                                      object.poseNodeIndex,
-                                                                                                      detectionVector);
-          object.initialDetectionError            = object.looselyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
         }
-
       } else {  // lost
         ++object.lostCount;
         object.confidence                               = 0.0;
+        object.trackScore                               = 0.0;
         objectPaths.markers[object.objectIndex].scale.x = 0.3;
         objectPaths.markers[object.objectIndex].scale.y = 0.3;
         objectPaths.markers[object.objectIndex].scale.z = 0.3;
@@ -1801,6 +1817,9 @@ class mapOptimization : public ParamServer {
         // the tracking (visualization) system, they are the same object.
         if (dataAssociationError < detectionMatchThreshold) {
           trackingObjectIndices[dataAssociationJ] = object.objectIndexForTracking;
+          // A tricky part: set the lostCount to a large number so that the
+          // system will subtly remove this ``retired'' object
+          object.lostCount = std::numeric_limits<int>::max();
         } else {
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.x = 0.3;
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.y = 0.3;
@@ -2048,6 +2067,10 @@ class mapOptimization : public ParamServer {
       for (auto& pairedObject : objects.back()) {
         auto& object = pairedObject.second;
 
+        // Since lost objects do not join the optimization, skip the value
+        // update for them
+        if (object.lostCount > 0) continue;
+
 #ifdef MAP_OPTIMIZATION_DEBUG
         std::cout << "(OBJECT " << object.objectIndex << ") [BEFORE]\nPOSITION ::\n"
                   << object.pose << "\n"
@@ -2280,113 +2303,111 @@ class mapOptimization : public ParamServer {
 
       for (auto& pairedObject : objects.back()) {
         auto& object = pairedObject.second;
-        // FIXME: Only publish detected objects?
-        // if (object.confidence > 0) {
+        // Only publish active objects
+        if (object.lostCount == 0) {
+          // TODO: A better data structure to present moving object with path
+          // Bounding box
+          object.box.header.stamp = timeLaserInfoStamp;
+          objectMessage.boxes.push_back(object.box);
+          trackingObjectMessage.boxes.push_back(object.box);
+          trackingObjectMessage.boxes.back().label = object.objectIndexForTracking;
 
-        // TODO: A better data structure to present moving object with path
-        // Bounding box
-        object.box.header.stamp = timeLaserInfoStamp;
-        objectMessage.boxes.push_back(object.box);
-        trackingObjectMessage.boxes.push_back(object.box);
-        trackingObjectMessage.boxes.back().label = object.objectIndexForTracking;
+          // Path
+          geometry_msgs::Point point;
+          point.x = object.box.pose.position.x;
+          point.y = object.box.pose.position.y;
+          point.z = object.box.pose.position.z;
+          objectPaths.markers[object.objectIndex].points.push_back(point);
+          objectPaths.markers[object.objectIndex].header.frame_id = odometryFrame;
+          objectPaths.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
 
-        // Path
-        geometry_msgs::Point point;
-        point.x = object.box.pose.position.x;
-        point.y = object.box.pose.position.y;
-        point.z = object.box.pose.position.z;
-        objectPaths.markers[object.objectIndex].points.push_back(point);
-        objectPaths.markers[object.objectIndex].header.frame_id = odometryFrame;
-        objectPaths.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+          trackingObjectPaths.markers[object.objectIndexForTracking].points.push_back(point);
+          trackingObjectPaths.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+          trackingObjectPaths.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
 
-        trackingObjectPaths.markers[object.objectIndexForTracking].points.push_back(point);
-        trackingObjectPaths.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
-        trackingObjectPaths.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+          // Tightly-coupled nodes (poses)
+          if (object.isTightlyCoupled) {
+            tightlyCoupledObjectPoints.points.push_back(point);
+          }
 
-        // Tightly-coupled nodes (poses)
-        if (object.isTightlyCoupled) {
-          tightlyCoupledObjectPoints.points.push_back(point);
+          // Label
+          objectLabels.markers[object.objectIndex].pose.position.x = object.box.pose.position.x;
+          objectLabels.markers[object.objectIndex].pose.position.y = object.box.pose.position.y;
+          objectLabels.markers[object.objectIndex].pose.position.z = object.box.pose.position.z + 2.0;
+          objectLabels.markers[object.objectIndex].header.frame_id = odometryFrame;
+          objectLabels.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+          trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.x = object.box.pose.position.x;
+          trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.y = object.box.pose.position.y;
+          trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.z = object.box.pose.position.z + 2.0;
+          trackingObjectLabels.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+          trackingObjectLabels.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+
+          // Velocity (prediction of path)
+          objectVelocities.markers[object.objectIndex].header.frame_id = odometryFrame;
+          objectVelocities.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+
+          trackingObjectVelocities.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+          trackingObjectVelocities.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+
+          // .. Compute the delta pose with respect to the delta time
+          auto identity     = gtsam::Pose3::identity();
+          auto deltaPoseVec = gtsam::traits<gtsam::Pose3>::Local(identity, object.velocity) * deltaTime;
+          auto deltaPose    = gtsam::traits<gtsam::Pose3>::Retract(identity, deltaPoseVec);
+          auto nextPose     = object.pose;
+
+          // .. Object position at relative time stamp from 1 to 5
+          for (int timeStamp = 1; timeStamp <= 5; ++timeStamp) {
+            nextPose = nextPose * deltaPose;
+            point.x  = nextPose.translation().x();
+            point.y  = nextPose.translation().y();
+            point.z  = nextPose.translation().z();
+            objectVelocities.markers[object.objectIndex].points.push_back(point);
+            trackingObjectVelocities.markers[object.objectIndexForTracking].points.push_back(point);
+          }
+
+          // Diagnosis
+          lio_sam::ObjectState state;
+          state.header.frame_id        = odometryFrame;
+          state.header.stamp           = timeLaserInfoStamp;
+          state.detection              = object.detection;
+          state.pose                   = object.box.pose;
+          state.velocity.position.x    = object.velocity.translation().x();
+          state.velocity.position.y    = object.velocity.translation().y();
+          state.velocity.position.z    = object.velocity.translation().z();
+          state.velocity.orientation.x = object.velocity.rotation().quaternion().x();
+          state.velocity.orientation.y = object.velocity.rotation().quaternion().y();
+          state.velocity.orientation.z = object.velocity.rotation().quaternion().z();
+          state.velocity.orientation.w = object.velocity.rotation().quaternion().w();
+          state.index                  = object.objectIndex;
+          state.lostCount              = object.lostCount;
+          state.confidence             = object.confidence;
+          state.isTightlyCoupled       = object.isTightlyCoupled;
+          state.isFirst                = object.isFirst;
+
+          state.hasTightlyCoupledDetectionError = false;
+          if (object.tightlyCoupledDetectionFactorPtr) {
+            state.hasTightlyCoupledDetectionError     = true;
+            state.tightlyCoupledDetectionError        = object.tightlyCoupledDetectionFactorPtr->error(isamCurrentEstimate);
+            state.initialTightlyCoupledDetectionError = object.initialDetectionError;
+          }
+
+          state.hasLooselyCoupledDetectionError = false;
+          if (object.looselyCoupledDetectionFactorPtr) {
+            state.hasLooselyCoupledDetectionError     = true;
+            state.looselyCoupledDetectionError        = object.looselyCoupledDetectionFactorPtr->error(isamCurrentEstimate);
+            state.initialLooselyCoupledDetectionError = object.initialDetectionError;
+          }
+
+          state.hasMotionError = false;
+          if (object.motionFactorPtr) {
+            state.hasMotionError     = true;
+            state.motionError        = object.motionFactorPtr->error(isamCurrentEstimate);
+            state.initialMotionError = object.initialMotionError;
+          }
+
+          objectStates.objects.push_back(state);
         }
-
-        // Label
-        objectLabels.markers[object.objectIndex].pose.position.x = object.box.pose.position.x;
-        objectLabels.markers[object.objectIndex].pose.position.y = object.box.pose.position.y;
-        objectLabels.markers[object.objectIndex].pose.position.z = object.box.pose.position.z + 2.0;
-        objectLabels.markers[object.objectIndex].header.frame_id = odometryFrame;
-        objectLabels.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
-
-        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.x = object.box.pose.position.x;
-        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.y = object.box.pose.position.y;
-        trackingObjectLabels.markers[object.objectIndexForTracking].pose.position.z = object.box.pose.position.z + 2.0;
-        trackingObjectLabels.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
-        trackingObjectLabels.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
-
-        // Velocity (prediction of path)
-        objectVelocities.markers[object.objectIndex].header.frame_id = odometryFrame;
-        objectVelocities.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
-
-        trackingObjectVelocities.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
-        trackingObjectVelocities.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
-
-        // .. Compute the delta pose with respect to the delta time
-        auto identity     = gtsam::Pose3::identity();
-        auto deltaPoseVec = gtsam::traits<gtsam::Pose3>::Local(identity, object.velocity) * deltaTime;
-        auto deltaPose    = gtsam::traits<gtsam::Pose3>::Retract(identity, deltaPoseVec);
-        auto nextPose     = object.pose;
-
-        // .. Object position at relative time stamp from 1 to 5
-        for (int timeStamp = 1; timeStamp <= 5; ++timeStamp) {
-          nextPose = nextPose * deltaPose;
-          point.x  = nextPose.translation().x();
-          point.y  = nextPose.translation().y();
-          point.z  = nextPose.translation().z();
-          objectVelocities.markers[object.objectIndex].points.push_back(point);
-          trackingObjectVelocities.markers[object.objectIndexForTracking].points.push_back(point);
-        }
-
-        // Diagnosis
-        lio_sam::ObjectState state;
-        state.header.frame_id        = odometryFrame;
-        state.header.stamp           = timeLaserInfoStamp;
-        state.detection              = object.detection;
-        state.pose                   = object.box.pose;
-        state.velocity.position.x    = object.velocity.translation().x();
-        state.velocity.position.y    = object.velocity.translation().y();
-        state.velocity.position.z    = object.velocity.translation().z();
-        state.velocity.orientation.x = object.velocity.rotation().quaternion().x();
-        state.velocity.orientation.y = object.velocity.rotation().quaternion().y();
-        state.velocity.orientation.z = object.velocity.rotation().quaternion().z();
-        state.velocity.orientation.w = object.velocity.rotation().quaternion().w();
-        state.index                  = object.objectIndex;
-        state.lostCount              = object.lostCount;
-        state.confidence             = object.confidence;
-        state.isTightlyCoupled       = object.isTightlyCoupled;
-        state.isFirst                = object.isFirst;
-
-        state.hasTightlyCoupledDetectionError = false;
-        if (object.tightlyCoupledDetectionFactorPtr) {
-          state.hasTightlyCoupledDetectionError     = true;
-          state.tightlyCoupledDetectionError        = object.tightlyCoupledDetectionFactorPtr->error(isamCurrentEstimate);
-          state.initialTightlyCoupledDetectionError = object.initialDetectionError;
-        }
-
-        state.hasLooselyCoupledDetectionError = false;
-        if (object.looselyCoupledDetectionFactorPtr) {
-          state.hasLooselyCoupledDetectionError     = true;
-          state.looselyCoupledDetectionError        = object.looselyCoupledDetectionFactorPtr->error(isamCurrentEstimate);
-          state.initialLooselyCoupledDetectionError = object.initialDetectionError;
-        }
-
-        state.hasMotionError = false;
-        if (object.motionFactorPtr) {
-          state.hasMotionError     = true;
-          state.motionError        = object.motionFactorPtr->error(isamCurrentEstimate);
-          state.initialMotionError = object.initialMotionError;
-        }
-
-        objectStates.objects.push_back(state);
-
-        // }
       }
 
       pubObjects.publish(objectMessage);
