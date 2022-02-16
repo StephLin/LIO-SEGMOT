@@ -9,10 +9,9 @@ Panels:
         - /links1
         - /Odometry1
         - /Point Cloud1
-        - /Point Cloud1/Velodyne1
         - /Feature Cloud1
         - /Mapping1
-        - /Mapping1/Map (cloud)1
+        - /Mapping1/Map (global)1
         - /Tracking1
         - /Tracking1/Dynamic Objects1
       Splitter Ratio: 0.5600000023841858
@@ -328,7 +327,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 300
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 46; 52; 54
           Max Intensity: 0.9900000095367432
@@ -345,7 +344,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -386,10 +385,10 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
+          Max Color: 75; 75; 75
+          Min Color: 75; 75; 75
           Name: Map (global)
           Position Transformer: XYZ
           Queue Size: 10
@@ -400,8 +399,8 @@ Visualization Manager:
           Topic: /lio_sam/mapping/map_global
           Unreliable: false
           Use Fixed Frame: true
-          Use rainbow: true
-          Value: false
+          Use rainbow: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
