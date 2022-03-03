@@ -1893,7 +1893,10 @@ class mapOptimization : public ParamServer {
           velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
           trackingObjectVelocities.markers.push_back(velocityMarker);
         } else {
-          object.objectIndexForTracking = trackingObjectIndices[idx];
+          object.objectIndexForTracking                                      = trackingObjectIndices[idx];
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.x = 0.6;
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.y = 0.6;
+          trackingObjectPaths.markers[object.objectIndexForTracking].scale.z = 0.6;
         }
 
         // TODO: Propagate the bounding box in the post-processing
