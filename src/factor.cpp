@@ -294,8 +294,8 @@ StablePoseFactor::evaluateError(const gtsam::Pose3 &previousPose,
   auto deltaPose    = gtsam::traits<gtsam::Pose3>::Retract(identity, deltaPoseVec);
   gtsam::Pose3 hx   = nextPose.inverse() * previousPose * deltaPose;
 
-  if (H1) *H1 = -velocity.inverse().AdjointMap();
-  if (H2) *H2 = gtsam::Matrix66::Identity() * this->deltaTime;
+  if (H1) *H1 = deltaPose.inverse().AdjointMap();
+  if (H2) *H2 = this->deltaTime * gtsam::Pose3::ExpmapDerivative(deltaPoseVec) * gtsam::Pose3::LogmapDerivative(velocity);
   if (H3) *H3 = -hx.inverse().AdjointMap();
 
   return gtsam::traits<gtsam::Pose3>::Local(identity, hx);
