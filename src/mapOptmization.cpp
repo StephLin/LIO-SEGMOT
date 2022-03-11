@@ -1897,6 +1897,7 @@ class mapOptimization : public ParamServer {
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.x = 0.6;
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.y = 0.6;
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.z = 0.6;
+          trackingObjectLabels.markers[object.objectIndexForTracking].text   = "Object " + std::to_string(object.objectIndexForTracking);
         }
 
         // TODO: Propagate the bounding box in the post-processing
@@ -2307,11 +2308,15 @@ class mapOptimization : public ParamServer {
       objectStates.header.frame_id = odometryFrame;
       objectStates.header.stamp    = timeLaserInfoStamp;
 
+      std::vector<bool> trackingObjectIsActive(numberOfTrackingObjects, false);
       for (auto& pairedObject : objects.back()) {
         auto& object = pairedObject.second;
         // Only publish active objects
         if (object.lostCount == 0) {
           // TODO: A better data structure to present moving object with path
+          // Mark the tracking object as an active instance
+          trackingObjectIsActive[object.objectIndexForTracking] = true;
+
           // Bounding box
           object.box.header.stamp = timeLaserInfoStamp;
           objectMessage.boxes.push_back(object.box);
@@ -2413,6 +2418,18 @@ class mapOptimization : public ParamServer {
           }
 
           objectStates.objects.push_back(state);
+        }
+      }
+
+      // Hide moving object if it only appears one time and it is not active
+      for (auto& pairedObject : objects.back()) {
+        auto& object = pairedObject.second;
+        auto& index  = object.objectIndexForTracking;
+        if (!trackingObjectIsActive[index] && object.lostCount != 0) {
+          if (trackingObjectPaths.markers[index].points.size() <= 2) {
+            trackingObjectPaths.markers[index].points.clear();
+            trackingObjectLabels.markers[index].text = "";
+          }
         }
       }
 
