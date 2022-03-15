@@ -2426,7 +2426,7 @@ class mapOptimization : public ParamServer {
         auto& object = pairedObject.second;
         auto& index  = object.objectIndexForTracking;
         if (!trackingObjectIsActive[index] && object.lostCount != 0) {
-          if (trackingObjectPaths.markers[index].points.size() <= 2) {
+          if (trackingObjectPaths.markers[index].points.size() <= 1) {
             trackingObjectPaths.markers[index].points.clear();
             trackingObjectLabels.markers[index].text = "";
           }
