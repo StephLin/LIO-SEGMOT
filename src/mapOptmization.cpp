@@ -1672,7 +1672,7 @@ class mapOptimization : public ParamServer {
     }
   }
 
-  void addDetectionFactor() {
+  void addDetectionFactor(bool requiredMockDetection = false) {
     anyObjectIsTightlyCoupled = false;
 
     if (detections->boxes.size() == 0 && objects.size() == 0) {
@@ -1701,12 +1701,38 @@ class mapOptimization : public ParamServer {
     std::vector<int> trackingObjectIndices(detections->boxes.size(), -1);
 
     // Create a vector of Detections.
+    auto smallEgoMotion = Pose3(Rot3::RzRyRx(0, 0, 0), Point3(0, 0, 0));
+    if (requiredMockDetection) {
+      Eigen::Affine3f transStart   = pclPointToAffine3f(cloudKeyPoses6D->back());
+      Eigen::Affine3f transFinal   = pcl::getTransformation(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
+                                                            transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+      Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
+      float x, y, z, roll, pitch, yaw;
+      pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
+      smallEgoMotion = Pose3(Rot3::RzRyRx(roll, pitch, yaw), Point3(x, y, z));
+    }
     detectionVector.clear();
     tightlyCoupledDetectionVector.clear();
     matchingVector.clear();
     tightlyCoupledMatchingVector.clear();
     dataAssociationVector.clear();
-    for (const auto& box : detections->boxes) {
+    for (auto box : detections->boxes) {
+      if (requiredMockDetection) {
+        auto pose = Pose3(Rot3::Quaternion(box.pose.orientation.w, box.pose.orientation.x, box.pose.orientation.y, box.pose.orientation.z),
+                          Point3(box.pose.position.x, box.pose.position.y, box.pose.position.z));
+        pose      = smallEgoMotion * pose;
+
+        auto quat              = pose.rotation().toQuaternion();
+        box.pose.orientation.w = quat.w();
+        box.pose.orientation.x = quat.x();
+        box.pose.orientation.y = quat.y();
+        box.pose.orientation.z = quat.z();
+
+        auto pos            = pose.translation();
+        box.pose.position.x = pos.x();
+        box.pose.position.y = pos.y();
+        box.pose.position.z = pos.z();
+      }
       detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
       tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionVarianceEigenVector);
       matchingVector.emplace_back(box, looselyCoupledMatchingVarianceEigenVector);
@@ -1969,7 +1995,28 @@ class mapOptimization : public ParamServer {
   }
 
   void saveKeyFramesAndFactor() {
-    if (saveFrame() == false)
+    bool requiredSaveFrame = saveFrame();
+
+#ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
+    if (requiredSaveFrame) {
+      // odom factor
+      addOdomFactor();
+
+      // gps factor
+      addGPSFactor();
+
+      // loop factor
+      addLoopFactor();
+    } else {
+      // add the latest ego-pose to the initial guess set
+      auto egoPose6D      = cloudKeyPoses6D->back();
+      Pose3 latestEgoPose = Pose3(Rot3::RzRyRx((Vector3() << egoPose6D.roll, egoPose6D.pitch, egoPose6D.yaw).finished()),
+                                  Point3((Vector3() << egoPose6D.x, egoPose6D.y, egoPose6D.z).finished()));
+      initialEstimate.insert(keyPoseIndices.back(), latestEgoPose);
+      initialEstimateForAnalysis.insert(keyPoseIndices.back(), latestEgoPose);
+    }
+#else  // LIO-SAM
+    if (!requiredSaveFrame)
       return;
 
     // odom factor
@@ -1980,13 +2027,14 @@ class mapOptimization : public ParamServer {
 
     // loop factor
     addLoopFactor();
+#endif
 
 #ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
     // perform dynamic object propagation
     propagateObjectPoses();
 
     // detection factor (for multi-object tracking tracking)
-    addDetectionFactor();
+    addDetectionFactor(!requiredSaveFrame);
 
     // // constant velocity factor (for multi-object tracking)
     addConstantVelocityFactor();
@@ -1999,6 +2047,11 @@ class mapOptimization : public ParamServer {
     std::cout << "****************************************************" << endl;
     gtSAMgraph.print("GTSAM Graph:\n");
 #endif
+
+    if (!requiredSaveFrame) {
+      initialEstimate.erase(keyPoseIndices.back());
+      initialEstimateForAnalysis.erase(keyPoseIndices.back());
+    }
 
     // update iSAM
     isam->update(gtSAMgraph, initialEstimate);
@@ -2016,57 +2069,60 @@ class mapOptimization : public ParamServer {
     initialEstimate.clear();
     initialEstimateForAnalysis.clear();
 
-    // save key poses
-    PointType thisPose3D;
-    PointTypePose thisPose6D;
-    Pose3 latestEstimate;
-
     isamCurrentEstimate = isam->calculateEstimate();
-    latestEstimate      = isamCurrentEstimate.at<Pose3>(keyPoseIndices.back());
-    // cout << "****************************************************" << endl;
-    // isamCurrentEstimate.print("Current estimate: ");
 
-    thisPose3D.x         = latestEstimate.translation().x();
-    thisPose3D.y         = latestEstimate.translation().y();
-    thisPose3D.z         = latestEstimate.translation().z();
-    thisPose3D.intensity = cloudKeyPoses3D->size();  // this can be used as index
-    cloudKeyPoses3D->push_back(thisPose3D);
+    if (requiredSaveFrame) {
+      // save key poses
+      PointType thisPose3D;
+      PointTypePose thisPose6D;
+      Pose3 latestEstimate;
 
-    thisPose6D.x         = thisPose3D.x;
-    thisPose6D.y         = thisPose3D.y;
-    thisPose6D.z         = thisPose3D.z;
-    thisPose6D.intensity = thisPose3D.intensity;  // this can be used as index
-    thisPose6D.roll      = latestEstimate.rotation().roll();
-    thisPose6D.pitch     = latestEstimate.rotation().pitch();
-    thisPose6D.yaw       = latestEstimate.rotation().yaw();
-    thisPose6D.time      = timeLaserInfoCur;
-    cloudKeyPoses6D->push_back(thisPose6D);
+      latestEstimate = isamCurrentEstimate.at<Pose3>(keyPoseIndices.back());
+      // cout << "****************************************************" << endl;
+      // isamCurrentEstimate.print("Current estimate: ");
 
-    // cout << "****************************************************" << endl;
-    // cout << "Pose covariance:" << endl;
-    // cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << endl << endl;
-    poseCovariance = isam->marginalCovariance(keyPoseIndices.back());
+      thisPose3D.x         = latestEstimate.translation().x();
+      thisPose3D.y         = latestEstimate.translation().y();
+      thisPose3D.z         = latestEstimate.translation().z();
+      thisPose3D.intensity = cloudKeyPoses3D->size();  // this can be used as index
+      cloudKeyPoses3D->push_back(thisPose3D);
 
-    // save updated transform
-    transformTobeMapped[0] = latestEstimate.rotation().roll();
-    transformTobeMapped[1] = latestEstimate.rotation().pitch();
-    transformTobeMapped[2] = latestEstimate.rotation().yaw();
-    transformTobeMapped[3] = latestEstimate.translation().x();
-    transformTobeMapped[4] = latestEstimate.translation().y();
-    transformTobeMapped[5] = latestEstimate.translation().z();
+      thisPose6D.x         = thisPose3D.x;
+      thisPose6D.y         = thisPose3D.y;
+      thisPose6D.z         = thisPose3D.z;
+      thisPose6D.intensity = thisPose3D.intensity;  // this can be used as index
+      thisPose6D.roll      = latestEstimate.rotation().roll();
+      thisPose6D.pitch     = latestEstimate.rotation().pitch();
+      thisPose6D.yaw       = latestEstimate.rotation().yaw();
+      thisPose6D.time      = timeLaserInfoCur;
+      cloudKeyPoses6D->push_back(thisPose6D);
 
-    // save all the received edge and surf points
-    pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr thisSurfKeyFrame(new pcl::PointCloud<PointType>());
-    pcl::copyPointCloud(*laserCloudCornerLastDS, *thisCornerKeyFrame);
-    pcl::copyPointCloud(*laserCloudSurfLastDS, *thisSurfKeyFrame);
+      // cout << "****************************************************" << endl;
+      // cout << "Pose covariance:" << endl;
+      // cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << endl << endl;
+      poseCovariance = isam->marginalCovariance(keyPoseIndices.back());
 
-    // save key frame cloud
-    cornerCloudKeyFrames.push_back(thisCornerKeyFrame);
-    surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+      // save updated transform
+      transformTobeMapped[0] = latestEstimate.rotation().roll();
+      transformTobeMapped[1] = latestEstimate.rotation().pitch();
+      transformTobeMapped[2] = latestEstimate.rotation().yaw();
+      transformTobeMapped[3] = latestEstimate.translation().x();
+      transformTobeMapped[4] = latestEstimate.translation().y();
+      transformTobeMapped[5] = latestEstimate.translation().z();
 
-    // save path for visualization
-    updatePath(thisPose6D);
+      // save all the received edge and surf points
+      pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new pcl::PointCloud<PointType>());
+      pcl::PointCloud<PointType>::Ptr thisSurfKeyFrame(new pcl::PointCloud<PointType>());
+      pcl::copyPointCloud(*laserCloudCornerLastDS, *thisCornerKeyFrame);
+      pcl::copyPointCloud(*laserCloudSurfLastDS, *thisSurfKeyFrame);
+
+      // save key frame cloud
+      cornerCloudKeyFrames.push_back(thisCornerKeyFrame);
+      surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+
+      // save path for visualization
+      updatePath(thisPose6D);
+    }
 
     // save dynamic objects
     if (objects.size() > 0) {
