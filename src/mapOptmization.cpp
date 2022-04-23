@@ -25,6 +25,7 @@
 // #define ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
 // #define MAP_OPTIMIZATION_DEBUG
 #define ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
+#define ENABLE_ASYNCHRONOUS_STATE_ESTIMATE_FOR_SLOT
 
 using namespace gtsam;
 
@@ -2055,12 +2056,16 @@ class mapOptimization : public ParamServer {
       // loop factor
       addLoopFactor();
     } else {
+#ifdef ENABLE_ASYNCHRONOUS_STATE_ESTIMATE_FOR_SLOT
       // add the latest ego-pose to the initial guess set
       auto egoPose6D      = cloudKeyPoses6D->back();
       Pose3 latestEgoPose = Pose3(Rot3::RzRyRx((Vector3() << egoPose6D.roll, egoPose6D.pitch, egoPose6D.yaw).finished()),
                                   Point3((Vector3() << egoPose6D.x, egoPose6D.y, egoPose6D.z).finished()));
       initialEstimate.insert(keyPoseIndices.back(), latestEgoPose);
       initialEstimateForAnalysis.insert(keyPoseIndices.back(), latestEgoPose);
+#else
+      return;
+#endif
     }
 #else  // LIO-SAM
     if (!requiredSaveFrame)
