@@ -74,7 +74,7 @@ lio_sam:
 
   # Surrounding map
   surroundingkeyframeAddingDistThreshold: 1.0   # meters, regulate keyframe adding threshold
-  surroundingkeyframeAddingAngleThreshold: 0.2  # radians, regulate keyframe adding threshold
+  surroundingkeyframeAddingAngleThreshold: -0.2  # radians, regulate keyframe adding threshold
   surroundingKeyframeDensity: 2.0               # meters, downsample surrounding keyframe poses   
   surroundingKeyframeSearchRadius: 50.0         # meters, within n meters scan-to-map optimization (when loop closure disabled)
 
@@ -94,22 +94,26 @@ lio_sam:
 
   # Dynamic object data association
   detectionMatchThreshold: 19.5
-  dataAssociationVarianceVector: [2.0e-3, 2.0e-3, 2.0e-3, 5.0e-2, 2.0e-2, 2.0e-2]
+  dataAssociationVarianceVector: [3.0e-3, 3.0e-3, 3.0e-3, 5.0e-2, 2.0e-2, 2.0e-2]
+  earlyLooselyCoupledMatchingVarianceVector: [3.0e-4, 3.0e-4, 3.0e-4, 5.0e-2, 5.0e-3, 5.0e-3]
   looselyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
   tightlyCoupledMatchingVarianceVector: [1.0e-6, 1.0e-6, 1.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
 
   # Factor covariance matrices (as diagonal vectors)
   # priorOdometryDiagonalVarianceVector: [1.0e-2, 1.0e-2, M_PI*M_PI, 1.0e+8, 1.0e+8, 1.0e+8]
   # odometryDiagonalVarianceVector: [1.0e-6, 1.0e-6, 1.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
+  earlyConstantVelocityDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   constantVelocityDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   motionDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 1.0e-1, 1.0e-2, 1.0e-2]
   looselyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
   tightlyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
 
+  numberOfEarlySteps: 2
   numberOfPreLooseCouplingSteps: 6
   numberOfInterLooseCouplingSteps: 0
   tightCouplingDetectionErrorThreshold: 80.0  # 50.0
 
+  objectIsMovingFastThreshold: 10.0  # m/s
   objectIsTurningThreshold: 0.5 # 0.20 rad
 
   # Tracking

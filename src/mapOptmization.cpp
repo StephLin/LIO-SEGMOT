@@ -130,13 +130,20 @@ class ObjectState {
     auto rot = gtsam::traits<gtsam::Rot3>::Local(gtsam::Rot3::identity(), this->velocity.rotation());
     return rot.maxCoeff() > threshold;
   }
+
+  bool isMovingFast(float threshold) const {
+    auto v = gtsam::traits<gtsam::Pose3>::Local(gtsam::Pose3::identity(), this->velocity);
+    return sqrt(pow(v(3), 2) + pow(v(4), 2) + pow(v(5), 2)) > threshold;
+  }
 };
 
 class mapOptimization : public ParamServer {
  public:
   // gtsam
   NonlinearFactorGraph gtSAMgraph;
+  NonlinearFactorGraph gtSAMgraphForLooselyCoupledObjects;
   Values initialEstimate;
+  Values initialEstimateForLooselyCoupledObjects;
   Values initialEstimateForAnalysis;
   Values optimizedEstimate;
   MaxMixtureISAM2* isam;
@@ -256,7 +263,8 @@ class mapOptimization : public ParamServer {
   BoundingBoxArrayPtr detections;
   std::vector<Detection> detectionVector;
   std::vector<Detection> tightlyCoupledDetectionVector;
-  std::vector<Detection> matchingVector;
+  std::vector<Detection> earlyLooselyCoupledMatchingVector;
+  std::vector<Detection> looselyCoupledMatchingVector;
   std::vector<Detection> tightlyCoupledMatchingVector;
   std::vector<Detection> dataAssociationVector;
   bool detectionIsActive = false;
@@ -1624,13 +1632,26 @@ class mapOptimization : public ParamServer {
       if (pairedObject.second.isFirst) continue;
       if (pairedObject.second.lostCount > 0) continue;
 
-      auto noiseModel     = noiseModel::Diagonal::Variances(constantVelocityDiagonalVarianceEigenVector);
-      auto currentObject  = pairedObject.second;
-      auto objectIndex    = currentObject.objectIndex;
-      auto previousObject = objects[objects.size() - 2][objectIndex];
-      gtSAMgraph.add(ConstantVelocityFactor(previousObject.velocityNodeIndex,
-                                            currentObject.velocityNodeIndex,
-                                            noiseModel));
+      auto noiseModel      = noiseModel::Diagonal::Variances(constantVelocityDiagonalVarianceEigenVector);
+      auto earlyNoiseModel = noiseModel::Diagonal::Variances(earlyConstantVelocityDiagonalVarianceEigenVector);
+      auto currentObject   = pairedObject.second;
+      auto objectIndex     = currentObject.objectIndex;
+      auto previousObject  = objects[objects.size() - 2][objectIndex];
+      if (pairedObject.second.isTightlyCoupled) {
+        gtSAMgraph.add(ConstantVelocityFactor(previousObject.velocityNodeIndex,
+                                              currentObject.velocityNodeIndex,
+                                              noiseModel));
+      } else {
+        if (objectPaths.markers[pairedObject.second.objectIndex].points.size() <= numberOfEarlySteps) {
+          gtSAMgraphForLooselyCoupledObjects.add(ConstantVelocityFactor(previousObject.velocityNodeIndex,
+                                                                        currentObject.velocityNodeIndex,
+                                                                        earlyNoiseModel));
+        } else {
+          gtSAMgraphForLooselyCoupledObjects.add(ConstantVelocityFactor(previousObject.velocityNodeIndex,
+                                                                        currentObject.velocityNodeIndex,
+                                                                        noiseModel));
+        }
+      }
     }
   }
 
@@ -1648,15 +1669,27 @@ class mapOptimization : public ParamServer {
       auto& currentObject = pairedObject.second;
       auto objectIndex    = currentObject.objectIndex;
       auto previousObject = objects[objects.size() - 2][objectIndex];
-      gtSAMgraph.add(StablePoseFactor(previousObject.poseNodeIndex,
+      if (pairedObject.second.isTightlyCoupled) {
+        gtSAMgraph.add(StablePoseFactor(previousObject.poseNodeIndex,
 #ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
-                                      currentObject.velocityNodeIndex,
+                                        currentObject.velocityNodeIndex,
 #else
-                                      previousObject.velocityNodeIndex,
+                                        previousObject.velocityNodeIndex,
 #endif
-                                      currentObject.poseNodeIndex,
-                                      deltaTime,
-                                      noise));
+                                        currentObject.poseNodeIndex,
+                                        deltaTime,
+                                        noise));
+      } else {
+        gtSAMgraphForLooselyCoupledObjects.add(StablePoseFactor(previousObject.poseNodeIndex,
+#ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
+                                                                currentObject.velocityNodeIndex,
+#else
+                                                                previousObject.velocityNodeIndex,
+#endif
+                                                                currentObject.poseNodeIndex,
+                                                                deltaTime,
+                                                                noise));
+      }
       currentObject.motionFactorPtr = boost::make_shared<StablePoseFactor>(previousObject.poseNodeIndex,
 #ifdef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
                                                                            currentObject.velocityNodeIndex,
@@ -1713,7 +1746,8 @@ class mapOptimization : public ParamServer {
     }
     detectionVector.clear();
     tightlyCoupledDetectionVector.clear();
-    matchingVector.clear();
+    earlyLooselyCoupledMatchingVector.clear();
+    looselyCoupledMatchingVector.clear();
     tightlyCoupledMatchingVector.clear();
     dataAssociationVector.clear();
     for (auto box : detections->boxes) {
@@ -1735,7 +1769,8 @@ class mapOptimization : public ParamServer {
       }
       detectionVector.emplace_back(box, looselyCoupledDetectionVarianceEigenVector);
       tightlyCoupledDetectionVector.emplace_back(box, tightlyCoupledDetectionVarianceEigenVector);
-      matchingVector.emplace_back(box, looselyCoupledMatchingVarianceEigenVector);
+      earlyLooselyCoupledMatchingVector.emplace_back(box, earlyLooselyCoupledMatchingVarianceEigenVector);
+      looselyCoupledMatchingVector.emplace_back(box, looselyCoupledMatchingVarianceEigenVector);
       tightlyCoupledMatchingVector.emplace_back(box, tightlyCoupledMatchingVarianceEigenVector);
       dataAssociationVector.emplace_back(box, dataAssociationVarianceEigenVector);
     }
@@ -1765,8 +1800,12 @@ class mapOptimization : public ParamServer {
       auto&& predictedPose = invEgoPose * object.pose;
       if (object.trackScore >= numberOfPreLooseCouplingSteps) {
         std::tie(j, error) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
+      } else if (objectPaths.markers[object.objectIndex].points.size() <= numberOfEarlySteps) {
+        // Set the detection factor error to the early-loosely-coupled detection
+        // error for new objects, as they need some chances tp obtain velocity
+        std::tie(j, error) = getDetectionIndexAndError(predictedPose, earlyLooselyCoupledMatchingVector);
       } else {
-        std::tie(j, error) = getDetectionIndexAndError(predictedPose, matchingVector);
+        std::tie(j, error) = getDetectionIndexAndError(predictedPose, looselyCoupledMatchingVector);
       }
       std::tie(dataAssociationJ, dataAssociationError) = getDetectionIndexAndError(predictedPose, dataAssociationVector);
 
@@ -1798,7 +1837,7 @@ class mapOptimization : public ParamServer {
                                                                                                       object.poseNodeIndex,
                                                                                                       tightlyCoupledDetectionVector);
             auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
-            if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold)) {
+            if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold) && !object.isMovingFast(objectIsMovingFastThreshold)) {
               anyObjectIsTightlyCoupled = true;
               object.isTightlyCoupled   = true;
               gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
@@ -1810,10 +1849,14 @@ class mapOptimization : public ParamServer {
             } else {
               object.trackScore -= numberOfInterLooseCouplingSteps;
               object.isTightlyCoupled = false;
-              gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
-                                                           object.poseNodeIndex,
-                                                           detectionVector,
-                                                           j));
+              initialEstimateForLooselyCoupledObjects.insert(object.poseNodeIndex, initialEstimate.at(object.poseNodeIndex));
+              initialEstimateForLooselyCoupledObjects.insert(object.velocityNodeIndex, initialEstimate.at(object.velocityNodeIndex));
+              initialEstimate.erase(object.poseNodeIndex);
+              initialEstimate.erase(object.velocityNodeIndex);
+              gtSAMgraphForLooselyCoupledObjects.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                                                   object.poseNodeIndex,
+                                                                                   detectionVector,
+                                                                                   j));
               object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                           object.poseNodeIndex,
                                                                                                           detectionVector);
@@ -1822,10 +1865,14 @@ class mapOptimization : public ParamServer {
           } else {
             // Pre-loosely coupled detection to stabilize the object velocity
             object.isTightlyCoupled = false;
-            gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
-                                                         object.poseNodeIndex,
-                                                         detectionVector,
-                                                         j));
+            initialEstimateForLooselyCoupledObjects.insert(object.poseNodeIndex, initialEstimate.at(object.poseNodeIndex));
+            initialEstimateForLooselyCoupledObjects.insert(object.velocityNodeIndex, initialEstimate.at(object.velocityNodeIndex));
+            initialEstimate.erase(object.poseNodeIndex);
+            initialEstimate.erase(object.velocityNodeIndex);
+            gtSAMgraphForLooselyCoupledObjects.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                                                 object.poseNodeIndex,
+                                                                                 detectionVector,
+                                                                                 j));
             object.looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                         object.poseNodeIndex,
                                                                                                         detectionVector);
@@ -1970,17 +2017,17 @@ class mapOptimization : public ParamServer {
         velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
         objectVelocities.markers.push_back(velocityMarker);
 
-        initialEstimate.insert(object.poseNodeIndex, object.pose);
-        initialEstimate.insert(object.velocityNodeIndex, object.velocity);
+        initialEstimateForLooselyCoupledObjects.insert(object.poseNodeIndex, object.pose);
+        initialEstimateForLooselyCoupledObjects.insert(object.velocityNodeIndex, object.velocity);
 
         initialEstimateForAnalysis.insert(object.poseNodeIndex, object.pose);
         initialEstimateForAnalysis.insert(object.velocityNodeIndex, object.velocity);
 
         // detection factor
-        gtSAMgraph.add(LooselyCoupledDetectionFactor(egoPoseKey,
-                                                     object.poseNodeIndex,
-                                                     detectionVector,
-                                                     idx));
+        gtSAMgraphForLooselyCoupledObjects.add(LooselyCoupledDetectionFactor(egoPoseKey,
+                                                                             object.poseNodeIndex,
+                                                                             detectionVector,
+                                                                             idx));
         objects.back()[object.objectIndex].looselyCoupledDetectionFactorPtr = boost::make_shared<LooselyCoupledDetectionFactor>(egoPoseKey,
                                                                                                                                 object.poseNodeIndex,
                                                                                                                                 detectionVector);
@@ -1988,7 +2035,7 @@ class mapOptimization : public ParamServer {
 #ifndef ENABLE_COMPACT_VERSION_OF_FACTOR_GRAPH
         // prior velocity factor (the noise should be large)
         auto noise = noiseModel::Diagonal::Variances((Vector(6) << 1e-2, 1e-2, 1e0, 1e8, 1e2, 1e2).finished());
-        gtSAMgraph.add(PriorFactor<Pose3>(object.velocityNodeIndex, object.velocity, noise));
+        gtSAMgraphForLooselyCoupledObjects.add(PriorFactor<Pose3>(object.velocityNodeIndex, object.velocity, noise));
 #endif
       }
     }
@@ -2068,6 +2115,16 @@ class mapOptimization : public ParamServer {
     gtSAMgraph.resize(0);
     initialEstimate.clear();
     initialEstimateForAnalysis.clear();
+
+#ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
+    if (!gtSAMgraphForLooselyCoupledObjects.empty()) {
+      isam->update(gtSAMgraphForLooselyCoupledObjects, initialEstimateForLooselyCoupledObjects);
+      isam->update();
+    }
+
+    gtSAMgraphForLooselyCoupledObjects.resize(0);
+    initialEstimateForLooselyCoupledObjects.clear();
+#endif
 
     isamCurrentEstimate = isam->calculateEstimate();
 
