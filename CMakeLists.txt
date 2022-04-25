@@ -41,6 +41,7 @@ add_service_files(
   FILES
   save_map.srv
   detection.srv
+  save_estimation_result.srv
 )
 
 generate_messages(

@@ -3,6 +3,7 @@
 #include "lio_sam/ObjectStateArray.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/detection.h"
+#include "lio_sam/save_estimation_result.h"
 #include "lio_sam/save_map.h"
 #include "solver.h"
 #include "utility.h"
@@ -58,6 +59,22 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIRPYT,
 
 typedef PointXYZIRPYT PointTypePose;
 
+geometry_msgs::Pose gtsamPose2ROSPose(const Pose3& pose) {
+  geometry_msgs::Pose p;
+  auto trans   = pose.translation();
+  p.position.x = trans.x();
+  p.position.y = trans.y();
+  p.position.z = trans.z();
+
+  auto quat       = pose.rotation().quaternion();
+  p.orientation.w = quat.w();
+  p.orientation.x = quat.x();
+  p.orientation.y = quat.y();
+  p.orientation.z = quat.z();
+
+  return p;
+}
+
 class ObjectState {
  public:
   Pose3 pose                      = Pose3::identity();
@@ -68,6 +85,7 @@ class ObjectState {
   uint64_t objectIndexForTracking = 0;
   int lostCount                   = 0;
   int trackScore                  = 0;
+  ros::Time timestamp             = ros::Time();
 
   BoundingBox box       = BoundingBox();
   BoundingBox detection = BoundingBox();
@@ -91,6 +109,7 @@ class ObjectState {
               uint64_t objectIndexForTracking = 0,
               int lostCount                   = 0,
               int trackScore                  = 0,
+              ros::Time timestamp             = ros::Time(),
               BoundingBox box                 = BoundingBox(),
               BoundingBox detection           = BoundingBox(),
               double confidence               = 0,
@@ -104,6 +123,7 @@ class ObjectState {
         objectIndexForTracking(objectIndexForTracking),
         lostCount(lostCount),
         trackScore(trackScore),
+        timestamp(timestamp),
         box(box),
         detection(detection),
         confidence(confidence),
@@ -120,6 +140,7 @@ class ObjectState {
                        objectIndexForTracking,
                        lostCount,
                        trackScore,
+                       timestamp,
                        box,
                        detection,
                        confidence,
@@ -183,6 +204,7 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubTrackingObjectVelocities;
 
   ros::ServiceServer srvSaveMap;
+  ros::ServiceServer srvSaveEstimationResult;
 
   ros::ServiceClient detectionClient;
   lio_sam::detection detectionSrv;
@@ -300,8 +322,9 @@ class mapOptimization : public ParamServer {
     subGPS   = nh.subscribe<nav_msgs::Odometry>(gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
     subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-    srvSaveMap      = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
-    detectionClient = nh.serviceClient<lio_sam::detection>("se_ssd");
+    srvSaveMap              = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
+    srvSaveEstimationResult = nh.advertiseService("lio_sam/save_estimation_result", &mapOptimization::saveEstimationResultService, this);
+    detectionClient         = nh.serviceClient<lio_sam::detection>("se_ssd");
 
     pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
     pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud", 1);
@@ -560,6 +583,33 @@ class mapOptimization : public ParamServer {
     cout << "Saving map to pcd files completed\n"
          << endl;
 
+    return true;
+  }
+
+  bool saveEstimationResultService(lio_sam::save_estimation_resultRequest& req, lio_sam::save_estimation_resultResponse& res) {
+    res.robotTrajectory            = globalPath;
+    res.objectTrajectories         = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
+    res.objectVelocities           = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
+    res.trackingObjectTrajectories = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
+    res.trackingObjectVelocities   = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
+    for (int t = 0; t < objects.size(); ++t) {
+      for (const auto& pairedObject : objects[t]) {
+        const auto& object = pairedObject.second;
+
+        if (object.lostCount > 0) continue;
+
+        geometry_msgs::PoseStamped ps;
+        ps.header.frame_id = odometryFrame;
+        ps.header.stamp    = object.timestamp;
+        ps.pose            = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.poseNodeIndex));
+        res.objectTrajectories[object.objectIndex].poses.push_back(ps);
+        res.trackingObjectTrajectories[object.objectIndexForTracking].poses.push_back(ps);
+
+        ps.pose = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex));
+        res.objectVelocities[object.objectIndex].poses.push_back(ps);
+        res.trackingObjectVelocities[object.objectIndexForTracking].poses.push_back(ps);
+      }
+    }
     return true;
   }
 
@@ -1603,7 +1653,8 @@ class mapOptimization : public ParamServer {
       auto deltaPose    = gtsam::traits<Pose3>::Retract(identity, deltaPoseVec);
       nextObject.pose   = nextObject.pose * deltaPose;
 
-      nextObject.isFirst = false;
+      nextObject.isFirst   = false;
+      nextObject.timestamp = timeLaserInfoStamp;
       if (pairedObject.second.lostCount == 0) {
         nextObject.poseNodeIndex     = numberOfNodes++;
         nextObject.velocityNodeIndex = numberOfNodes++;
@@ -1925,6 +1976,7 @@ class mapOptimization : public ParamServer {
         object.velocityNodeIndex = numberOfNodes++;
         object.objectIndex       = numberOfRegisteredObjects++;
         object.isFirst           = true;
+        object.timestamp         = timeLaserInfoStamp;
         if (trackingObjectIndices[idx] < 0) {
           object.objectIndexForTracking = numberOfTrackingObjects++;
 
