@@ -74,7 +74,7 @@ lio_sam:
 
   # Surrounding map
   surroundingkeyframeAddingDistThreshold: 1.0   # meters, regulate keyframe adding threshold
-  surroundingkeyframeAddingAngleThreshold: -0.2  # radians, regulate keyframe adding threshold
+  surroundingkeyframeAddingAngleThreshold: 0.2  # radians, regulate keyframe adding threshold
   surroundingKeyframeDensity: 2.0               # meters, downsample surrounding keyframe poses   
   surroundingKeyframeSearchRadius: 50.0         # meters, within n meters scan-to-map optimization (when loop closure disabled)
 
@@ -113,6 +113,8 @@ lio_sam:
   numberOfInterLooseCouplingSteps: 0
   tightCouplingDetectionErrorThreshold: 80.0  # 50.0
 
+  objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad
+  objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m
   objectIsMovingFastThreshold: 10.0  # m/s
   objectIsTurningThreshold: 0.5 # 0.20 rad
 
