@@ -429,15 +429,16 @@ class mapOptimization : public ParamServer {
 
     detections.reset(new BoundingBoxArray());
 
-    tightlyCoupledObjectPoints.action  = visualization_msgs::Marker::ADD;
-    tightlyCoupledObjectPoints.type    = visualization_msgs::Marker::SPHERE_LIST;
-    tightlyCoupledObjectPoints.color.a = 0.4;
-    tightlyCoupledObjectPoints.color.r = 1.0;
-    tightlyCoupledObjectPoints.color.g = 1.0;
-    tightlyCoupledObjectPoints.color.b = 1.0;
-    tightlyCoupledObjectPoints.scale.x = 1.0;
-    tightlyCoupledObjectPoints.scale.y = 1.0;
-    tightlyCoupledObjectPoints.scale.z = 1.0;
+    tightlyCoupledObjectPoints.action             = visualization_msgs::Marker::ADD;
+    tightlyCoupledObjectPoints.type               = visualization_msgs::Marker::SPHERE_LIST;
+    tightlyCoupledObjectPoints.color.a            = 0.4;
+    tightlyCoupledObjectPoints.color.r            = 1.0;
+    tightlyCoupledObjectPoints.color.g            = 1.0;
+    tightlyCoupledObjectPoints.color.b            = 1.0;
+    tightlyCoupledObjectPoints.scale.x            = 1.0;
+    tightlyCoupledObjectPoints.scale.y            = 1.0;
+    tightlyCoupledObjectPoints.scale.z            = 1.0;
+    tightlyCoupledObjectPoints.pose.orientation.w = 1.0;
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
