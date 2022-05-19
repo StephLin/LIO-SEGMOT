@@ -181,9 +181,12 @@ class ParamServer {
   // Gentle coupling options
   int numberOfEarlySteps;
   int numberOfPreLooseCouplingSteps;
+  int numberOfVelocityConsistencySteps;
   int numberOfInterLooseCouplingSteps;
   float tightCouplingDetectionErrorThreshold;
 
+  float objectAngularVelocityConsistencyVarianceThreshold;
+  float objectLinearVelocityConsistencyVarianceThreshold;
   float objectIsMovingFastThreshold;
   float objectIsTurningThreshold;
 
@@ -304,10 +307,13 @@ class ParamServer {
 
     nh.param<int>("lio_sam/numberOfEarlySteps", numberOfEarlySteps, 1);
     nh.param<int>("lio_sam/numberOfPreLooseCouplingSteps", numberOfPreLooseCouplingSteps, 10);
+    nh.param<int>("lio_sam/numberOfVelocityConsistencySteps", numberOfVelocityConsistencySteps, 4);
     nh.param<int>("lio_sam/numberOfInterLooseCouplingSteps", numberOfInterLooseCouplingSteps, 0);
     nh.param<float>("lio_sam/tightCouplingDetectionErrorThreshold", tightCouplingDetectionErrorThreshold, 500.0);
 
-    nh.param<float>("lio_sam/objectIsMovingFastThreshold", objectIsMovingFastThreshold, 1.0);
+    nh.param<float>("lio_sam/objectAngularVelocityConsistencyVarianceThreshold", objectAngularVelocityConsistencyVarianceThreshold, 1e-5);
+    nh.param<float>("lio_sam/objectLinearVelocityConsistencyVarianceThreshold", objectLinearVelocityConsistencyVarianceThreshold, 1e-2);
+    nh.param<float>("lio_sam/objectIsMovingFastThreshold", objectIsMovingFastThreshold, 10.0);
     nh.param<float>("lio_sam/objectIsTurningThreshold", objectIsTurningThreshold, 30);
 
     nh.param<int>("lio_sam/trackingStepsForLostObject", trackingStepsForLostObject, 3);

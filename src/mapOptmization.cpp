@@ -101,20 +101,23 @@ class ObjectState {
   double initialDetectionError = 0;
   double initialMotionError    = 0;
 
-  ObjectState(Pose3 pose                      = Pose3::identity(),
-              Pose3 velocity                  = Pose3::identity(),
-              uint64_t poseNodeIndex          = 0,
-              uint64_t velocityNodeIndex      = 0,
-              uint64_t objectIndex            = 0,
-              uint64_t objectIndexForTracking = 0,
-              int lostCount                   = 0,
-              int trackScore                  = 0,
-              ros::Time timestamp             = ros::Time(),
-              BoundingBox box                 = BoundingBox(),
-              BoundingBox detection           = BoundingBox(),
-              double confidence               = 0,
-              bool isTightlyCoupled           = false,
-              bool isFirst                    = false)
+  std::vector<uint64_t> previousVelocityNodeIndices;
+
+  ObjectState(Pose3 pose                                        = Pose3::identity(),
+              Pose3 velocity                                    = Pose3::identity(),
+              uint64_t poseNodeIndex                            = 0,
+              uint64_t velocityNodeIndex                        = 0,
+              uint64_t objectIndex                              = 0,
+              uint64_t objectIndexForTracking                   = 0,
+              int lostCount                                     = 0,
+              int trackScore                                    = 0,
+              ros::Time timestamp                               = ros::Time(),
+              BoundingBox box                                   = BoundingBox(),
+              BoundingBox detection                             = BoundingBox(),
+              double confidence                                 = 0,
+              bool isTightlyCoupled                             = false,
+              bool isFirst                                      = false,
+              std::vector<uint64_t> previousVelocityNodeIndices = std::vector<uint64_t>())
       : pose(pose),
         velocity(velocity),
         poseNodeIndex(poseNodeIndex),
@@ -128,7 +131,8 @@ class ObjectState {
         detection(detection),
         confidence(confidence),
         isTightlyCoupled(isTightlyCoupled),
-        isFirst(isFirst) {
+        isFirst(isFirst),
+        previousVelocityNodeIndices(previousVelocityNodeIndices) {
   }
 
   ObjectState clone() const {
@@ -145,7 +149,8 @@ class ObjectState {
                        detection,
                        confidence,
                        isTightlyCoupled,
-                       isFirst);
+                       isFirst,
+                       previousVelocityNodeIndices);
   }
 
   bool isTurning(float threshold) const {
@@ -157,6 +162,31 @@ class ObjectState {
     auto v = gtsam::traits<gtsam::Pose3>::Local(gtsam::Pose3::identity(), this->velocity);
     return sqrt(pow(v(3), 2) + pow(v(4), 2) + pow(v(5), 2)) > threshold;
   }
+
+  bool velocityIsConsistent(int samplingSize,
+                            Values& currentEstimates,
+                            double angleThreshold,
+                            double velocityThreshold) const {
+    int size = previousVelocityNodeIndices.size();
+
+    if (size < samplingSize) return false;
+
+    Eigen::VectorXd angles     = Eigen::VectorXd::Zero(samplingSize);
+    Eigen::VectorXd velocities = Eigen::VectorXd::Zero(samplingSize);
+    for (int i = 0; i < samplingSize; ++i) {
+      auto vi       = currentEstimates.at<gtsam::Pose3>(previousVelocityNodeIndices[size - i - 1]);
+      auto v        = gtsam::traits<gtsam::Pose3>::Local(gtsam::Pose3::identity(), vi);
+      angles(i)     = sqrt(pow(v(0), 2) + pow(v(1), 2) + pow(v(2), 2));
+      velocities(i) = sqrt(pow(v(3), 2) + pow(v(4), 2) + pow(v(5), 2));
+    }
+
+    double angleVar    = (angles.array() - angles.mean()).pow(2).mean();
+    double velocityVar = (velocities.array() - velocities.mean()).pow(2).mean();
+
+    return angleVar < angleThreshold && velocityVar < velocityThreshold;
+  }
+};
+
 };
 
 class mapOptimization : public ParamServer {
@@ -1664,6 +1694,8 @@ class mapOptimization : public ParamServer {
 
         initialEstimateForAnalysis.insert(nextObject.poseNodeIndex, nextObject.pose);
         initialEstimateForAnalysis.insert(nextObject.velocityNodeIndex, nextObject.velocity);
+
+        nextObject.previousVelocityNodeIndices.push_back(pairedObject.second.velocityNodeIndex);
       } else {
         nextObject.poseNodeIndex     = -1;
         nextObject.velocityNodeIndex = -1;
@@ -1889,7 +1921,14 @@ class mapOptimization : public ParamServer {
                                                                                                       object.poseNodeIndex,
                                                                                                       tightlyCoupledDetectionVector);
             auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
-            if (detectionError <= tightCouplingDetectionErrorThreshold && !object.isTurning(objectIsTurningThreshold) && !object.isMovingFast(objectIsMovingFastThreshold)) {
+
+            auto detectionTest  = detectionError <= tightCouplingDetectionErrorThreshold;
+            auto turningTest    = !object.isTurning(objectIsTurningThreshold);
+            auto velocityTest   = !object.isMovingFast(objectIsMovingFastThreshold);
+            auto consistentTest = object.velocityIsConsistent(numberOfVelocityConsistencySteps, isamCurrentEstimate,
+                                                              objectAngularVelocityConsistencyVarianceThreshold,
+                                                              objectLinearVelocityConsistencyVarianceThreshold);
+            if (detectionTest && turningTest && velocityTest && consistentTest) {
               anyObjectIsTightlyCoupled = true;
               object.isTightlyCoupled   = true;
               gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,

@@ -105,18 +105,19 @@ lio_sam:
   earlyConstantVelocityDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   constantVelocityDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 2.0e-1, 1.0e-1, 1.0e-1]
   motionDiagonalVarianceVector: [2.0e-4, 2.0e-4, 1.0e-3, 1.0e-1, 1.0e-2, 1.0e-2]
-  looselyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
-  tightlyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
+  looselyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 1.5e-3, 1.5e-3, 1.5e-3]
+  tightlyCoupledDetectionVarianceVector: [2.0e-4, 2.0e-4, 2.0e-4, 1.5e-3, 1.5e-3, 1.5e-3]
 
   numberOfEarlySteps: 2
   numberOfPreLooseCouplingSteps: 6
+  numberOfVelocityConsistencySteps: 4
   numberOfInterLooseCouplingSteps: 0
-  tightCouplingDetectionErrorThreshold: 80.0  # 50.0
+  tightCouplingDetectionErrorThreshold: 80.0
 
-  objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad
-  objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m
+  objectAngularVelocityConsistencyVarianceThreshold: 8.0e-6  # rad^2
+  objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m^2
   objectIsMovingFastThreshold: 10.0  # m/s
-  objectIsTurningThreshold: 0.5 # 0.20 rad
+  objectIsTurningThreshold: 0.3 # 0.20 rad
 
   # Tracking
   trackingStepsForLostObject: 3
