@@ -66,7 +66,7 @@ geometry_msgs::Pose gtsamPose2ROSPose(const Pose3& pose) {
   p.position.y = trans.y();
   p.position.z = trans.z();
 
-  auto quat       = pose.rotation().quaternion();
+  auto quat       = pose.rotation().toQuaternion();
   p.orientation.w = quat.w();
   p.orientation.x = quat.x();
   p.orientation.y = quat.y();
