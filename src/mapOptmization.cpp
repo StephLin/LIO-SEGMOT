@@ -187,8 +187,6 @@ class ObjectState {
   }
 };
 
-};
-
 class mapOptimization : public ParamServer {
  public:
   // gtsam
@@ -380,7 +378,7 @@ class mapOptimization : public ParamServer {
     pubTrackingObjectLabels     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
     pubTrackingObjectVelocities = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
 
-    pubReady             = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
+    pubReady = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
