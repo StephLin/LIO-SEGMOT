@@ -40,6 +40,8 @@ class ImageProjection : public ParamServer {
   ros::Publisher pubExtractedCloud;
   ros::Publisher pubLaserCloudInfo;
 
+  ros::Publisher pubReady;
+
   ros::Subscriber subImu;
   std::deque<sensor_msgs::Imu> imuQueue;
 
@@ -86,6 +88,7 @@ class ImageProjection : public ParamServer {
 
     pubExtractedCloud = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
     pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
+    pubReady          = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
 
     allocateMemory();
     resetParameters();
@@ -162,11 +165,10 @@ class ImageProjection : public ParamServer {
   }
 
   void cloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg) {
-    if (!cachePointCloud(laserCloudMsg))
+    if (!cachePointCloud(laserCloudMsg) || !deskewInfo()) {
+      pubReady.publish(std_msgs::Empty());
       return;
-
-    if (!deskewInfo())
-      return;
+    }
 
     projectPointCloud();
 

@@ -233,6 +233,8 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubTrackingObjectLabels;
   ros::Publisher pubTrackingObjectVelocities;
 
+  ros::Publisher pubReady;
+
   ros::ServiceServer srvSaveMap;
   ros::ServiceServer srvSaveEstimationResult;
 
@@ -378,6 +380,8 @@ class mapOptimization : public ParamServer {
     pubTrackingObjectLabels     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
     pubTrackingObjectVelocities = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
 
+    pubReady             = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
+
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
     downSizeFilterICP.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -482,6 +486,8 @@ class mapOptimization : public ParamServer {
 
       publishFrames();
     }
+
+    pubReady.publish(std_msgs::Empty());
   }
 
   void getDetections() {
