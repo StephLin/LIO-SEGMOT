@@ -82,13 +82,14 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  ROS_INFO("Start playing the bag ...");
-
-  for (int i = 0; i < 20; ++i) {
+  // Make sure that the system is ready to subscribe the data
+  ROS_INFO("Pending ...");
+  while (pubImu.getNumSubscribers() == 0 || pubLiDAR.getNumSubscribers() == 0) {
     ros::spinOnce();
   }
 
-  // Play the first patch
+  ROS_INFO("Start playing the bag ...");
+  // Play the first patch of the data
   playInstances(patchedInstances.front());
   patchedInstances.pop();
 
