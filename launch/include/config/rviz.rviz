@@ -14,7 +14,7 @@ Panels:
         - /Mapping1/Map (global)1
         - /Tracking1
         - /Tracking1/Dynamic Objects1
-      Splitter Ratio: 0.5600000023841858
+      Splitter Ratio: 0.5940054655075073
     Tree Height: 686
   - Class: rviz/Selection
     Name: Selection
@@ -524,7 +524,7 @@ Visualization Manager:
           Marker Topic: /lio_sam/mapping/tightly_coupled_object_points
           Name: Tightly-coupled nodes
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
       Enabled: true
@@ -548,7 +548,7 @@ Visualization Manager:
           Marker Topic: /lio_sam/tracking/object_paths
           Name: Dynamic Object Paths
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -556,7 +556,7 @@ Visualization Manager:
           Marker Topic: /lio_sam/tracking/object_labels
           Name: Dynamic Object Labels
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -564,7 +564,15 @@ Visualization Manager:
           Marker Topic: /lio_sam/tracking/object_velocities
           Name: Dynamic Object Predicted Path
           Namespaces:
-            {}
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /lio_sam/tracking/object_velocity_arrows
+          Name: Dynamic Object Predicted Path Arrow
+          Namespaces:
+            "": true
           Queue Size: 100
           Value: true
       Enabled: true
@@ -585,25 +593,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 213.90121459960938
+      Distance: 182.35630798339844
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 19.626070022583008
-        Y: 84.42291259765625
-        Z: -89.79410552978516
+        X: 68.5766372680664
+        Y: 25.248287200927734
+        Z: -78.56790161132812
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8103978633880615
+      Pitch: 0.8203978538513184
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 4.486667633056641
+      Yaw: 3.4916627407073975
     Saved: ~
 Window Geometry:
   Displays:

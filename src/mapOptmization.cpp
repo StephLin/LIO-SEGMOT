@@ -225,11 +225,13 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubTightlyCoupledObjectPoints;
   ros::Publisher pubObjectLabels;
   ros::Publisher pubObjectVelocities;
+  ros::Publisher pubObjectVelocityArrows;
   ros::Publisher pubObjectStates;
   ros::Publisher pubTrackingObjects;
   ros::Publisher pubTrackingObjectPaths;
   ros::Publisher pubTrackingObjectLabels;
   ros::Publisher pubTrackingObjectVelocities;
+  ros::Publisher pubTrackingObjectVelocityArrows;
 
   ros::Publisher pubReady;
 
@@ -326,9 +328,11 @@ class mapOptimization : public ParamServer {
   visualization_msgs::Marker tightlyCoupledObjectPoints;
   visualization_msgs::MarkerArray objectLabels;
   visualization_msgs::MarkerArray objectVelocities;
+  visualization_msgs::MarkerArray objectVelocityArrows;
   visualization_msgs::MarkerArray trackingObjectPaths;
   visualization_msgs::MarkerArray trackingObjectLabels;
   visualization_msgs::MarkerArray trackingObjectVelocities;
+  visualization_msgs::MarkerArray trackingObjectVelocityArrows;
   lio_sam::ObjectStateArray objectStates;
   uint64_t numberOfRegisteredObjects = 0;
   uint64_t numberOfTrackingObjects   = 0;
@@ -371,12 +375,14 @@ class mapOptimization : public ParamServer {
     pubTightlyCoupledObjectPoints = nh.advertise<visualization_msgs::Marker>("lio_sam/mapping/tightly_coupled_object_points", 1);
     pubObjectLabels               = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_labels", 1);
     pubObjectVelocities           = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocities", 1);
+    pubObjectVelocityArrows       = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocity_arrows", 1);
     pubObjectStates               = nh.advertise<lio_sam::ObjectStateArray>("lio_sam/mapping/object_states", 1);
 
-    pubTrackingObjects          = nh.advertise<BoundingBoxArray>("lio_sam/tracking/objects", 1);
-    pubTrackingObjectPaths      = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_paths", 1);
-    pubTrackingObjectLabels     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
-    pubTrackingObjectVelocities = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
+    pubTrackingObjects              = nh.advertise<BoundingBoxArray>("lio_sam/tracking/objects", 1);
+    pubTrackingObjectPaths          = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_paths", 1);
+    pubTrackingObjectLabels         = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
+    pubTrackingObjectVelocities     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
+    pubTrackingObjectVelocityArrows = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocity_arrows", 1);
 
     pubReady = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
 
@@ -2052,16 +2058,19 @@ class mapOptimization : public ParamServer {
 
           visualization_msgs::Marker velocityMarker;
           velocityMarker.id               = object.objectIndexForTracking;
-          velocityMarker.type             = visualization_msgs::Marker::SPHERE_LIST;
-          velocityMarker.color.a          = 0.5;
+          velocityMarker.type             = visualization_msgs::Marker::LINE_STRIP;
+          velocityMarker.color.a          = 0.7;
           velocityMarker.color.r          = color.r;
           velocityMarker.color.g          = color.g;
           velocityMarker.color.b          = color.b;
-          velocityMarker.scale.x          = 0.6;
-          velocityMarker.scale.y          = 0.6;
-          velocityMarker.scale.z          = 0.6;
+          velocityMarker.scale.x          = 0.4;
+          velocityMarker.scale.y          = 0.4;
+          velocityMarker.scale.z          = 0.4;
           velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
           trackingObjectVelocities.markers.push_back(velocityMarker);
+
+          velocityMarker.type = visualization_msgs::Marker::ARROW;
+          trackingObjectVelocityArrows.markers.push_back(velocityMarker);
         } else {
           object.objectIndexForTracking                                      = trackingObjectIndices[idx];
           trackingObjectPaths.markers[object.objectIndexForTracking].scale.x = 0.6;
@@ -2103,16 +2112,19 @@ class mapOptimization : public ParamServer {
 
         visualization_msgs::Marker velocityMarker;
         velocityMarker.id               = object.objectIndex;
-        velocityMarker.type             = visualization_msgs::Marker::SPHERE_LIST;
-        velocityMarker.color.a          = 0.5;
+        velocityMarker.type             = visualization_msgs::Marker::LINE_STRIP;
+        velocityMarker.color.a          = 0.7;
         velocityMarker.color.r          = color.r;
         velocityMarker.color.g          = color.g;
         velocityMarker.color.b          = color.b;
-        velocityMarker.scale.x          = 0.6;
-        velocityMarker.scale.y          = 0.6;
-        velocityMarker.scale.z          = 0.6;
+        velocityMarker.scale.x          = 0.4;
+        velocityMarker.scale.y          = 0.4;
+        velocityMarker.scale.z          = 0.4;
         velocityMarker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
         objectVelocities.markers.push_back(velocityMarker);
+
+        velocityMarker.type = visualization_msgs::Marker::ARROW;
+        objectVelocityArrows.markers.push_back(velocityMarker);
 
         initialEstimateForLooselyCoupledObjects.insert(object.poseNodeIndex, object.pose);
         initialEstimateForLooselyCoupledObjects.insert(object.velocityNodeIndex, object.velocity);
@@ -2514,8 +2526,20 @@ class mapOptimization : public ParamServer {
       for (auto& marker : objectVelocities.markers) {
         marker.points.clear();
       }
+      for (auto& marker : objectVelocityArrows.markers) {
+        marker.points.clear();
+        marker.scale.x = 0;
+        marker.scale.y = 0;
+        marker.scale.z = 0;
+      }
       for (auto& marker : trackingObjectVelocities.markers) {
         marker.points.clear();
+      }
+      for (auto& marker : trackingObjectVelocityArrows.markers) {
+        marker.points.clear();
+        marker.scale.x = 0;
+        marker.scale.y = 0;
+        marker.scale.z = 0;
       }
 
       objectStates.objects.clear();
@@ -2569,15 +2593,25 @@ class mapOptimization : public ParamServer {
           trackingObjectLabels.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
 
           // Velocity (prediction of path)
-          objectVelocities.markers[object.objectIndex].header.frame_id = odometryFrame;
-          objectVelocities.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+          objectVelocities.markers[object.objectIndex].header.frame_id     = odometryFrame;
+          objectVelocities.markers[object.objectIndex].header.stamp        = timeLaserInfoStamp;
+          objectVelocityArrows.markers[object.objectIndex].header.frame_id = odometryFrame;
+          objectVelocityArrows.markers[object.objectIndex].header.stamp    = timeLaserInfoStamp;
+          objectVelocityArrows.markers[object.objectIndex].scale.x         = 0.4;
+          objectVelocityArrows.markers[object.objectIndex].scale.y         = 0.8;
+          objectVelocityArrows.markers[object.objectIndex].scale.z         = 1.0;
 
-          trackingObjectVelocities.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
-          trackingObjectVelocities.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+          trackingObjectVelocities.markers[object.objectIndexForTracking].header.frame_id     = odometryFrame;
+          trackingObjectVelocities.markers[object.objectIndexForTracking].header.stamp        = timeLaserInfoStamp;
+          trackingObjectVelocityArrows.markers[object.objectIndexForTracking].header.frame_id = odometryFrame;
+          trackingObjectVelocityArrows.markers[object.objectIndexForTracking].header.stamp    = timeLaserInfoStamp;
+          trackingObjectVelocityArrows.markers[object.objectIndexForTracking].scale.x         = 0.4;
+          trackingObjectVelocityArrows.markers[object.objectIndexForTracking].scale.y         = 0.8;
+          trackingObjectVelocityArrows.markers[object.objectIndexForTracking].scale.z         = 1.0;
 
           // .. Compute the delta pose with respect to the delta time
           auto identity     = gtsam::Pose3::identity();
-          auto deltaPoseVec = gtsam::traits<gtsam::Pose3>::Local(identity, object.velocity) * deltaTime;
+          auto deltaPoseVec = gtsam::traits<gtsam::Pose3>::Local(identity, object.velocity) * 0.1;
           auto deltaPose    = gtsam::traits<gtsam::Pose3>::Retract(identity, deltaPoseVec);
           auto nextPose     = object.pose;
 
@@ -2587,8 +2621,14 @@ class mapOptimization : public ParamServer {
             point.x  = nextPose.translation().x();
             point.y  = nextPose.translation().y();
             point.z  = nextPose.translation().z();
-            objectVelocities.markers[object.objectIndex].points.push_back(point);
-            trackingObjectVelocities.markers[object.objectIndexForTracking].points.push_back(point);
+            if (timeStamp <= 4) {
+              objectVelocities.markers[object.objectIndex].points.push_back(point);
+              trackingObjectVelocities.markers[object.objectIndexForTracking].points.push_back(point);
+            }
+            if (timeStamp >= 4) {
+              objectVelocityArrows.markers[object.objectIndex].points.push_back(point);
+              trackingObjectVelocityArrows.markers[object.objectIndexForTracking].points.push_back(point);
+            }
           }
 
           // Diagnosis
@@ -2652,10 +2692,12 @@ class mapOptimization : public ParamServer {
       pubTightlyCoupledObjectPoints.publish(tightlyCoupledObjectPoints);
       pubObjectLabels.publish(objectLabels);
       pubObjectVelocities.publish(objectVelocities);
+      pubObjectVelocityArrows.publish(objectVelocityArrows);
       pubTrackingObjects.publish(trackingObjectMessage);
       pubTrackingObjectPaths.publish(trackingObjectPaths);
       pubTrackingObjectLabels.publish(trackingObjectLabels);
       pubTrackingObjectVelocities.publish(trackingObjectVelocities);
+      pubTrackingObjectVelocityArrows.publish(trackingObjectVelocityArrows);
       pubObjectStates.publish(objectStates);
     }
   }
