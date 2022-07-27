@@ -524,7 +524,7 @@ Visualization Manager:
           Marker Topic: /lio_sam/mapping/tightly_coupled_object_points
           Name: Tightly-coupled nodes
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
       Enabled: true
@@ -548,23 +548,23 @@ Visualization Manager:
           Marker Topic: /lio_sam/tracking/object_paths
           Name: Dynamic Object Paths
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /lio_sam/tracking/object_labels
           Name: Dynamic Object Labels
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: true
           Marker Topic: /lio_sam/tracking/object_velocities
           Name: Dynamic Object Predicted Path
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -572,7 +572,7 @@ Visualization Manager:
           Marker Topic: /lio_sam/tracking/object_velocity_arrows
           Name: Dynamic Object Predicted Path Arrow
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
       Enabled: true

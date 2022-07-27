@@ -1,0 +1,5 @@
+Header header
+
+float64 computationalTime
+int32 numberOfDetections
+int32 numberOfTightlyCoupledObjects

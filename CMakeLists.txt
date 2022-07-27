@@ -35,6 +35,8 @@ add_message_files(
   cloud_info.msg
   ObjectState.msg
   ObjectStateArray.msg
+  Diagnosis.msg
+  flags.msg
 )
 
 add_service_files(

@@ -1,8 +1,10 @@
 #include <jsk_topic_tools/color_utils.h>
 #include "factor.h"
+#include "lio_sam/Diagnosis.h"
 #include "lio_sam/ObjectStateArray.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/detection.h"
+#include "lio_sam/flags.h"
 #include "lio_sam/save_estimation_result.h"
 #include "lio_sam/save_map.h"
 #include "solver.h"
@@ -173,17 +175,57 @@ class ObjectState {
 
     Eigen::VectorXd angles     = Eigen::VectorXd::Zero(samplingSize);
     Eigen::VectorXd velocities = Eigen::VectorXd::Zero(samplingSize);
+    std::vector<gtsam::Vector6> vs;
+    gtsam::Vector6 vMean = gtsam::Vector6::Zero();
     for (int i = 0; i < samplingSize; ++i) {
       auto vi       = currentEstimates.at<gtsam::Pose3>(previousVelocityNodeIndices[size - i - 1]);
       auto v        = gtsam::traits<gtsam::Pose3>::Local(gtsam::Pose3::identity(), vi);
       angles(i)     = sqrt(pow(v(0), 2) + pow(v(1), 2) + pow(v(2), 2));
       velocities(i) = sqrt(pow(v(3), 2) + pow(v(4), 2) + pow(v(5), 2));
+      vs.push_back(v);
+      vMean += v;
     }
+    vMean /= samplingSize;
+    gtsam::Matrix6 covariance = gtsam::Matrix6::Zero();
+    covariance(0, 0) = covariance(1, 1) = covariance(2, 2) = angleThreshold;
+    covariance(3, 3) = covariance(4, 4) = covariance(5, 5) = velocityThreshold;
+    auto covarianceInverse                                 = covariance.inverse();
+    double error                                           = 0.0;
+    for (int i = 0; i < samplingSize; ++i) {
+      auto v = vs[i] - vMean;
+      error += v.transpose() * covarianceInverse * v;
+    }
+    error /= samplingSize;
 
     double angleVar    = (angles.array() - angles.mean()).pow(2).mean();
     double velocityVar = (velocities.array() - velocities.mean()).pow(2).mean();
 
-    return angleVar < angleThreshold && velocityVar < velocityThreshold;
+    // return angleVar < angleThreshold && velocityVar < velocityThreshold;
+
+    return error < 1.0 * 1.0;
+  }
+};
+
+class Timer {
+ private:
+  std::chrono::time_point<std::chrono::high_resolution_clock> start;
+  std::chrono::time_point<std::chrono::high_resolution_clock> end;
+
+ public:
+  Timer() {
+    start = std::chrono::high_resolution_clock::now();
+  }
+
+  void reset() {
+    start = std::chrono::high_resolution_clock::now();
+  }
+
+  void stop() {
+    end = std::chrono::high_resolution_clock::now();
+  }
+
+  double elapsed() const {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   }
 };
 
@@ -232,6 +274,8 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubTrackingObjectLabels;
   ros::Publisher pubTrackingObjectVelocities;
   ros::Publisher pubTrackingObjectVelocityArrows;
+
+  ros::Publisher pubDiagnosis;
 
   ros::Publisher pubReady;
 
@@ -340,6 +384,9 @@ class mapOptimization : public ParamServer {
 
   uint64_t numberOfNodes = 0;
 
+  Timer timer;
+  int numberOfTightlyCoupledObjectsAtThisMoment = 0;
+
   mapOptimization() {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
@@ -383,6 +430,8 @@ class mapOptimization : public ParamServer {
     pubTrackingObjectLabels         = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
     pubTrackingObjectVelocities     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
     pubTrackingObjectVelocityArrows = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocity_arrows", 1);
+
+    pubDiagnosis = nh.advertise<lio_sam::Diagnosis>("lio_sam/diagnosis", 1);
 
     pubReady = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
 
@@ -461,6 +510,9 @@ class mapOptimization : public ParamServer {
 
     std::lock_guard<std::mutex> lock(mtx);
 
+    timer.reset();
+    numberOfTightlyCoupledObjectsAtThisMoment = 0;
+
     static double timeLastProcessing = -1;
     if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval) {
 #ifdef ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
@@ -485,6 +537,8 @@ class mapOptimization : public ParamServer {
       saveKeyFramesAndFactor();
 
       correctPoses();
+
+      timer.stop();
 
       publishOdometry();
 
@@ -633,6 +687,8 @@ class mapOptimization : public ParamServer {
     res.objectVelocities           = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
     res.trackingObjectTrajectories = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
     res.trackingObjectVelocities   = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
+    res.objectFlags                = std::vector<lio_sam::flags>(numberOfRegisteredObjects, lio_sam::flags());
+    res.trackingObjectFlags        = std::vector<lio_sam::flags>(numberOfTrackingObjects, lio_sam::flags());
     for (int t = 0; t < objects.size(); ++t) {
       for (const auto& pairedObject : objects[t]) {
         const auto& object = pairedObject.second;
@@ -649,6 +705,9 @@ class mapOptimization : public ParamServer {
         ps.pose = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex));
         res.objectVelocities[object.objectIndex].poses.push_back(ps);
         res.trackingObjectVelocities[object.objectIndexForTracking].poses.push_back(ps);
+
+        res.objectFlags[object.objectIndex].flags.push_back(object.isTightlyCoupled ? 1 : 0);
+        res.trackingObjectFlags[object.objectIndexForTracking].flags.push_back(object.isTightlyCoupled ? 1 : 0);
       }
     }
     return true;
@@ -1894,7 +1953,8 @@ class mapOptimization : public ParamServer {
 
       auto&& predictedPose = invEgoPose * object.pose;
       if (object.trackScore >= numberOfPreLooseCouplingSteps) {
-        std::tie(j, error) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
+        // std::tie(j, error) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
+        std::tie(j, error) = getDetectionIndexAndError(predictedPose, looselyCoupledMatchingVector);
       } else if (objectPaths.markers[object.objectIndex].points.size() <= numberOfEarlySteps) {
         // Set the detection factor error to the early-loosely-coupled detection
         // error for new objects, as they need some chances tp obtain velocity
@@ -1931,15 +1991,16 @@ class mapOptimization : public ParamServer {
             auto tightlyCoupledDetectionFactorPtr = boost::make_shared<TightlyCoupledDetectionFactor>(egoPoseKey,
                                                                                                       object.poseNodeIndex,
                                                                                                       tightlyCoupledDetectionVector);
-            auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+            // auto&& detectionError                 = tightlyCoupledDetectionFactorPtr->error(initialEstimateForAnalysis);
+            double detectionError;
+            std::tie(j, detectionError) = getDetectionIndexAndError(predictedPose, tightlyCoupledMatchingVector);
 
-            auto detectionTest  = detectionError <= tightCouplingDetectionErrorThreshold;
-            auto turningTest    = !object.isTurning(objectIsTurningThreshold);
-            auto velocityTest   = !object.isMovingFast(objectIsMovingFastThreshold);
-            auto consistentTest = object.velocityIsConsistent(numberOfVelocityConsistencySteps, isamCurrentEstimate,
-                                                              objectAngularVelocityConsistencyVarianceThreshold,
-                                                              objectLinearVelocityConsistencyVarianceThreshold);
-            if (detectionTest && turningTest && velocityTest && consistentTest) {
+            auto spatialConsistencyTest  = detectionError <= tightCouplingDetectionErrorThreshold;
+            auto temporalConsistencyTest = object.velocityIsConsistent(numberOfVelocityConsistencySteps, isamCurrentEstimate,
+                                                                       objectAngularVelocityConsistencyVarianceThreshold,
+                                                                       objectLinearVelocityConsistencyVarianceThreshold);
+            if (spatialConsistencyTest && temporalConsistencyTest) {
+              ++numberOfTightlyCoupledObjectsAtThisMoment;
               anyObjectIsTightlyCoupled = true;
               object.isTightlyCoupled   = true;
               gtSAMgraph.add(TightlyCoupledDetectionFactor(egoPoseKey,
@@ -2700,6 +2761,14 @@ class mapOptimization : public ParamServer {
       pubTrackingObjectVelocityArrows.publish(trackingObjectVelocityArrows);
       pubObjectStates.publish(objectStates);
     }
+
+    lio_sam::Diagnosis diagnosis;
+    diagnosis.header.frame_id               = odometryFrame;
+    diagnosis.header.stamp                  = timeLaserInfoStamp;
+    diagnosis.numberOfDetections            = detections ? detections->boxes.size() : 0;
+    diagnosis.computationalTime             = timer.elapsed();
+    diagnosis.numberOfTightlyCoupledObjects = numberOfTightlyCoupledObjectsAtThisMoment;
+    pubDiagnosis.publish(diagnosis);
   }
 };
 

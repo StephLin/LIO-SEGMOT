@@ -38,7 +38,7 @@ lio_sam:
   imuGravity: 9.80511
   imuRPYWeight: 0.01
 
-  # Extrinsics (lidar -> IMU, KITTI)
+  # Extrinsics (lidar -> IMU)
   extrinsicTrans: [-8.086759e-01, 3.195559e-01, -7.997231e-01]
   extrinsicRot: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
                  -7.854027e-04, 9.998898e-01, -1.482298e-02,
@@ -46,7 +46,6 @@ lio_sam:
   extrinsicRPY: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
                  -7.854027e-04, 9.998898e-01, -1.482298e-02,
                   2.024406e-03, 1.482454e-02,  9.998881e-01]
-  # Extrinsics (lidar -> IMU, ITRI)
   # extrinsicTrans: [0, 0, 0]
   # extrinsicRot: [1, 0, 0,
   #                 0, 1, 0,
@@ -96,11 +95,10 @@ lio_sam:
 
   # Dynamic object data association
   detectionMatchThreshold: 19.5
-  dataAssociationVarianceVector: [5.0e-3, 5.0e-3, 5.0e-3, 5.0e-2, 3.0e-2, 3.0e-2]
+  dataAssociationVarianceVector: [8.0e-3, 8.0e-3, 8.0e-3, 5.0e-2, 4.0e-2, 4.0e-2]
   earlyLooselyCoupledMatchingVarianceVector: [3.0e-4, 3.0e-4, 3.0e-4, 5.0e-2, 5.0e-3, 5.0e-3]
   looselyCoupledMatchingVarianceVector: [1.0e-4, 1.0e-4, 1.0e-4, 2.0e-3, 2.0e-3, 2.0e-3]
-  tightlyCoupledMatchingVarianceVector: [8.0e-6, 8.0e-6, 8.0e-6, 1.0e-4, 1.0e-4, 1.0e-4]
-  # tightlyCoupledMatchingVarianceVector: [2.0e-7, 2.0e-7, 2.0e-7, 1.5e-5, 1.5e-5, 1.5e-5]
+  tightlyCoupledMatchingVarianceVector: [2.0e-7, 2.0e-7, 2.0e-7, 1.5e-5, 1.5e-5, 1.5e-5]
 
   # Factor covariance matrices (as diagonal vectors)
   # priorOdometryDiagonalVarianceVector: [1.0e-2, 1.0e-2, M_PI*M_PI, 1.0e+8, 1.0e+8, 1.0e+8]
@@ -115,9 +113,9 @@ lio_sam:
   numberOfPreLooseCouplingSteps: 6
   numberOfVelocityConsistencySteps: 4
   numberOfInterLooseCouplingSteps: 0
-  tightCouplingDetectionErrorThreshold: 19.5
+  tightCouplingDetectionErrorThreshold: 80.0
 
-  objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad^2
+  objectAngularVelocityConsistencyVarianceThreshold: 8.0e-6  # rad^2
   objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m^2
   objectIsTurningThreshold: 0.3 # 0.20 rad
 
