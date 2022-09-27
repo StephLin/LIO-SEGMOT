@@ -29,6 +29,7 @@
 // #define MAP_OPTIMIZATION_DEBUG
 #define ENABLE_SIMULTANEOUS_LOCALIZATION_AND_TRACKING
 #define ENABLE_ASYNCHRONOUS_STATE_ESTIMATE_FOR_SLOT
+// #define ENABLE_MINIMAL_MEMORY_USAGE
 
 using namespace gtsam;
 
@@ -1783,6 +1784,14 @@ class mapOptimization : public ParamServer {
       nextObjects[pairedObject.first] = nextObject;
     }
     objects.push_back(nextObjects);
+
+#ifdef ENABLE_MINIMAL_MEMORY_USAGE
+    if (objects.size() > 2 &&
+        objects.size() > numberOfPreLooseCouplingSteps + 1 &&
+        objects.size() > numberOfVelocityConsistencySteps + 1) {
+      objects.erase(objects.begin());
+    }
+#endif
   }
 
   void addConstantVelocityFactor() {
