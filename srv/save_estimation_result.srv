@@ -4,5 +4,6 @@ nav_msgs/Path[] objectTrajectories
 nav_msgs/Path[] objectVelocities
 nav_msgs/Path[] trackingObjectTrajectories
 nav_msgs/Path[] trackingObjectVelocities
+lio_sam/ObjectStateArray[] trackingObjectStates
 lio_sam/flags[] objectFlags
 lio_sam/flags[] trackingObjectFlags

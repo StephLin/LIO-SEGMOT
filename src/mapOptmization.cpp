@@ -687,6 +687,7 @@ class mapOptimization : public ParamServer {
     res.objectVelocities           = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
     res.trackingObjectTrajectories = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
     res.trackingObjectVelocities   = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
+    res.trackingObjectStates       = std::vector<lio_sam::ObjectStateArray>(numberOfTrackingObjects, lio_sam::ObjectStateArray());
     res.objectFlags                = std::vector<lio_sam::flags>(numberOfRegisteredObjects, lio_sam::flags());
     res.trackingObjectFlags        = std::vector<lio_sam::flags>(numberOfTrackingObjects, lio_sam::flags());
     for (int t = 0; t < objects.size(); ++t) {
@@ -708,6 +709,14 @@ class mapOptimization : public ParamServer {
 
         res.objectFlags[object.objectIndex].flags.push_back(object.isTightlyCoupled ? 1 : 0);
         res.trackingObjectFlags[object.objectIndexForTracking].flags.push_back(object.isTightlyCoupled ? 1 : 0);
+
+        lio_sam::ObjectState state;
+        state.header.frame_id = odometryFrame;
+        state.header.stamp    = object.timestamp;
+        state.pose            = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.poseNodeIndex));
+        state.velocity        = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.velocityNodeIndex));
+        state.detection       = object.detection;
+        res.trackingObjectStates[object.objectIndexForTracking].objects.push_back(state);
       }
     }
     return true;
