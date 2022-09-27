@@ -39,21 +39,21 @@ lio_sam:
   imuRPYWeight: 0.01
 
   # Extrinsics (lidar -> IMU, KITTI)
-  extrinsicTrans: [-8.086759e-01, 3.195559e-01, -7.997231e-01]
-  extrinsicRot: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
-                 -7.854027e-04, 9.998898e-01, -1.482298e-02,
-                  2.024406e-03, 1.482454e-02,  9.998881e-01]
-  extrinsicRPY: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
-                 -7.854027e-04, 9.998898e-01, -1.482298e-02,
-                  2.024406e-03, 1.482454e-02,  9.998881e-01]
+  # extrinsicTrans: [-8.086759e-01, 3.195559e-01, -7.997231e-01]
+  # extrinsicRot: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
+  #                -7.854027e-04, 9.998898e-01, -1.482298e-02,
+  #                 2.024406e-03, 1.482454e-02,  9.998881e-01]
+  # extrinsicRPY: [ 9.999976e-01, 7.553071e-04, -2.035826e-03,
+  #                -7.854027e-04, 9.998898e-01, -1.482298e-02,
+  #                 2.024406e-03, 1.482454e-02,  9.998881e-01]
   # Extrinsics (lidar -> IMU, ITRI)
-  # extrinsicTrans: [0, 0, 0]
-  # extrinsicRot: [1, 0, 0,
-  #                 0, 1, 0,
-  #                 0, 0, 1]
-  # extrinsicRPY: [1, 0, 0,
-  #                 0, 1, 0,
-  #                 0, 0, 1]
+  extrinsicTrans: [0, 0, 0]
+  extrinsicRot: [1, 0, 0,
+                  0, 1, 0,
+                  0, 0, 1]
+  extrinsicRPY: [1, 0, 0,
+                  0, 1, 0,
+                  0, 0, 1]
   # Extrinsics (lidar -> IMU, UrbanLoco)
   # extrinsicTrans: [0, 0, -0.0762]
   # extrinsicRot: [ 0, 1, 0,
@@ -123,7 +123,7 @@ lio_sam:
   numberOfPreLooseCouplingSteps: 6
   numberOfVelocityConsistencySteps: 4
   numberOfInterLooseCouplingSteps: 0
-  tightCouplingDetectionErrorThreshold: 26.0  # 25.5 (0818b) # 26.0 (0818a)  # 26.5 (0818)  # 19.5
+  tightCouplingDetectionErrorThreshold: 19.5
 
   objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad^2
   objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m^2
