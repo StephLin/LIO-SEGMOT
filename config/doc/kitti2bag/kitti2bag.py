@@ -9,21 +9,23 @@ except ImportError as e:
     print('Could not load module \'pykitti\'. Please run `pip install pykitti`')
     sys.exit(1)
 
-import tf
-import os
-import cv2
-import rospy
-import rosbag
-from tqdm import tqdm
-from tf2_msgs.msg import TFMessage
-from datetime import datetime
-from std_msgs.msg import Header
-from sensor_msgs.msg import CameraInfo, Imu, PointField, NavSatFix
-import sensor_msgs.point_cloud2 as pcl2
-from geometry_msgs.msg import TransformStamped, TwistStamped, Transform
-from cv_bridge import CvBridge
-import numpy as np
 import argparse
+import os
+from datetime import datetime
+
+import cv2
+import numpy as np
+import rosbag
+import rospy
+import sensor_msgs.point_cloud2 as pcl2
+import tf
+from cv_bridge import CvBridge
+from geometry_msgs.msg import Transform, TransformStamped, TwistStamped
+from sensor_msgs.msg import CameraInfo, Imu, NavSatFix, PointField
+from std_msgs.msg import Header
+from tf2_msgs.msg import TFMessage
+from tqdm import tqdm
+
 
 def save_imu_data(bag, kitti, imu_frame_id, topic):
     print("Exporting IMU")
