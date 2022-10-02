@@ -123,11 +123,10 @@ lio_sam:
   numberOfPreLooseCouplingSteps: 6
   numberOfVelocityConsistencySteps: 4
   numberOfInterLooseCouplingSteps: 0
-  tightCouplingDetectionErrorThreshold: 26.0  # 25.5 (0818b) # 26.0 (0818a)  # 26.5 (0818)  # 19.5
+  tightCouplingDetectionErrorThreshold: 26.0
 
   objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad^2
   objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m^2
-  objectIsTurningThreshold: 0.3 # 0.20 rad
 
   # Tracking
   trackingStepsForLostObject: 3

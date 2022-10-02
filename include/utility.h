@@ -187,7 +187,6 @@ class ParamServer {
 
   float objectAngularVelocityConsistencyVarianceThreshold;
   float objectLinearVelocityConsistencyVarianceThreshold;
-  float objectIsTurningThreshold;
 
   // Tracking
   int trackingStepsForLostObject;
@@ -312,7 +311,6 @@ class ParamServer {
 
     nh.param<float>("lio_sam/objectAngularVelocityConsistencyVarianceThreshold", objectAngularVelocityConsistencyVarianceThreshold, 1e-5);
     nh.param<float>("lio_sam/objectLinearVelocityConsistencyVarianceThreshold", objectLinearVelocityConsistencyVarianceThreshold, 1e-2);
-    nh.param<float>("lio_sam/objectIsTurningThreshold", objectIsTurningThreshold, 30);
 
     nh.param<int>("lio_sam/trackingStepsForLostObject", trackingStepsForLostObject, 3);
 

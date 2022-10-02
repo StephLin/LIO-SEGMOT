@@ -127,7 +127,6 @@ lio_sam:
 
   objectAngularVelocityConsistencyVarianceThreshold: 1.0e-5  # rad^2
   objectLinearVelocityConsistencyVarianceThreshold: 1.0e-2  # m^2
-  objectIsTurningThreshold: 0.3 # 0.20 rad
 
   # Tracking
   trackingStepsForLostObject: 3
