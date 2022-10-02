@@ -184,6 +184,61 @@ def save_dynamic_tf(bag, kitti, kitti_type, initial_time):
 
             bag.write('/tf', tf_msg, tf_msg.transforms[0].header.stamp)
 
+def save_dynamic_tf_as_tum_file(filename, kitti, kitti_type, initial_time):
+    print("Exporting time dependent transformations as the tum format")
+    with open(filename, 'w') as file:
+        if kitti_type.find("raw") != -1:
+            for timestamp, oxts in zip(kitti.timestamps, kitti.oxts):
+                tf_oxts_msg = TFMessage()
+                tf_oxts_transform = TransformStamped()
+                tf_oxts_transform.header.stamp = rospy.Time.from_sec(float(timestamp.strftime("%s.%f")))
+                tf_oxts_transform.header.frame_id = 'world'
+                tf_oxts_transform.child_frame_id = 'base_link'
+
+                transform = (oxts.T_w_imu)
+                t = transform[0:3, 3]
+                q = tf.transformations.quaternion_from_matrix(transform)
+                oxts_tf = Transform()
+
+                oxts_tf.translation.x = t[0]
+                oxts_tf.translation.y = t[1]
+                oxts_tf.translation.z = t[2]
+
+                oxts_tf.rotation.x = q[0]
+                oxts_tf.rotation.y = q[1]
+                oxts_tf.rotation.z = q[2]
+                oxts_tf.rotation.w = q[3]
+
+                tum_stamp = '%s %f %f %f %f %f %f %f\n'
+                tum_stamp = tum_stamp % (timestamp.strftime('%s.%f'), t[0], t[1], t[2], q[0], q[1], q[2], q[3])
+                file.write(tum_stamp)
+
+        elif kitti_type.find("odom") != -1:
+            timestamps = map(lambda x: initial_time + x.total_seconds(), kitti.timestamps)
+            for timestamp, tf_matrix in zip(timestamps, kitti.T_w_cam0):
+                tf_msg = TFMessage()
+                tf_stamped = TransformStamped()
+                tf_stamped.header.stamp = rospy.Time.from_sec(timestamp)
+                tf_stamped.header.frame_id = 'world'
+                tf_stamped.child_frame_id = 'camera_left'
+                
+                t = tf_matrix[0:3, 3]
+                q = tf.transformations.quaternion_from_matrix(tf_matrix)
+                transform = Transform()
+
+                transform.translation.x = t[0]
+                transform.translation.y = t[1]
+                transform.translation.z = t[2]
+
+                transform.rotation.x = q[0]
+                transform.rotation.y = q[1]
+                transform.rotation.z = q[2]
+                transform.rotation.w = q[3]
+                
+                tum_stamp = '%s %f %f %f %f %f %f %f\n'
+                tum_stamp = tum_stamp % (timestamp.strftime('%s.%f'), t[0], t[1], t[2], q[0], q[1], q[2], q[3])
+                file.write(tum_stamp)
+
 def save_camera_data(bag, kitti_type, kitti, util, bridge, camera, camera_frame_id, topic, initial_time):
     print("Exporting camera {}".format(camera))
     if kitti_type.find("raw") != -1:
@@ -403,6 +458,7 @@ if __name__ == "__main__":
             sys.exit(1)
         
         bag = rosbag.Bag("kitti_{}_drive_{}_{}.bag".format(args.date, args.drive, args.kitti_type[4:]), 'w', compression=compression)
+        tum_filename = "kitti_{}_drive_{}_{}.tum".format(args.date, args.drive, args.kitti_type[4:])
         kitti = pykitti.raw(args.dir, args.date, args.drive)
         if not os.path.exists(kitti.data_path):
             print('Path {} does not exists. Exiting.'.format(kitti.data_path))
@@ -438,8 +494,9 @@ if __name__ == "__main__":
             util = pykitti.utils.read_calib_file(os.path.join(kitti.calib_path, 'calib_cam_to_cam.txt'))
 
             # Export
-            # save_static_transforms(bag, transforms, kitti.timestamps)
-            # save_dynamic_tf(bag, kitti, args.kitti_type, initial_time=None)
+            save_static_transforms(bag, transforms, kitti.timestamps)
+            save_dynamic_tf(bag, kitti, args.kitti_type, initial_time=None)
+            save_dynamic_tf_as_tum_file(tum_filename, kitti, args.kitti_type, initial_time=None)
             # save_imu_data(bag, kitti, imu_frame_id, imu_topic)
             save_imu_data_raw(bag, kitti, imu_frame_id, imu_raw_topic)
             save_gps_fix_data(bag, kitti, imu_frame_id, gps_fix_topic)
