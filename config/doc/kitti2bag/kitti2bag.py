@@ -53,20 +53,38 @@ def save_imu_data_raw(bag, kitti, imu_frame_id, topic):
     imu_path = os.path.join(unsynced_path, 'oxts')
 
     # read time stamp (convert to ros seconds format)
+    ambiguous_index = None
     with open(os.path.join(imu_path, 'timestamps.txt')) as f:
         lines = f.readlines()
         imu_datetimes = []
+        imu_status = []
         for line in lines:
             if len(line) == 1:
                 continue
             timestamp = datetime.strptime(line[:-4], '%Y-%m-%d %H:%M:%S.%f')
-            imu_datetimes.append(float(timestamp.strftime("%s.%f")))
+            imu_datetime = float(timestamp.strftime('%s.%f'))
 
-    # fix imu time using a linear model (may not be ideal, ^_^)
-    imu_index = np.asarray(range(len(imu_datetimes)), dtype=np.float64)
-    z = np.polyfit(imu_index, imu_datetimes, 1)
-    imu_datetimes_new = z[0] * imu_index + z[1]
-    imu_datetimes = imu_datetimes_new.tolist()
+            if len(imu_datetimes) == 0:
+                pass
+            elif imu_datetimes[-1] > imu_datetime:
+                if ambiguous_index is None:
+                    ambiguous_index = np.argwhere(np.array(imu_datetimes) < imu_datetime).flatten()[-1] + 1
+
+                for i in range(ambiguous_index, len(imu_datetimes)):
+                    imu_status[i] = False
+
+            if len(imu_datetimes) > 0 and imu_datetime - imu_datetimes[-1] >= 0.02:
+                ambiguous_index = len(imu_datetimes)
+
+            imu_datetimes.append(imu_datetime)
+            imu_status.append(True)
+    
+    # # fix imu time using a linear model (may not be ideal, ^_^)
+    # imu_index = np.asarray(range(len(imu_datetimes)), dtype=np.float64)
+    # z = np.polyfit(imu_index, imu_datetimes, 1)
+    # imu_datetimes_new = z[0] * imu_index + z[1]
+    # imu_datetimes = imu_datetimes_new.tolist()
+    # assert((np.diff(imu_datetimes) > 0).all())
 
     # get all imu data
     imu_data_dir = os.path.join(imu_path, 'data')
@@ -81,9 +99,15 @@ def save_imu_data_raw(bag, kitti, imu_frame_id, topic):
             line_list = stripped_line.split()
             imu_data[i] = line_list
 
+    if len(imu_data) > len(imu_datetimes):
+        imu_data = imu_data[:len(imu_datetimes)]
+
     assert len(imu_datetimes) == len(imu_data)
-    
-    for timestamp, data in zip(imu_datetimes, imu_data):
+    print("Max IMU time interval: " + str(np.diff(np.array(imu_datetimes)[np.argwhere(imu_status).flatten()]).max()))
+
+    for timestamp, data, status in zip(imu_datetimes, imu_data, imu_status):
+        if not status:
+            continue
         roll, pitch, yaw = float(data[3]), float(data[4]), float(data[5]), 
         q = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
         imu = Imu()
