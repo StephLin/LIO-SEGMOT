@@ -24,7 +24,6 @@ main idea of LIO-SEGMOT.
 - [:wheelchair: API of LIO-SEGMOT](#wheelchair-api-of-lio-segmot)
 - [:memo: Some Remarks](#memo-some-remarks)
 
-
 ## :gear: Installation
 
 The project is originally developed in **Ubuntu 18.04**, and the following
@@ -91,26 +90,35 @@ Please refer to their installation instructions accordingly.
 
 ## :card_file_box: Sample Datasets
 
-We provide the following pre-built bags for KITTI raw sequences and the Hsinchu
+We provide the following pre-built bag files for KITTI raw sequences and the Hsinchu
 dataset (GuangfuRoad sequence):
 
-| Dataset | Sequence    | Link |
-| ------- | ----------- | ---- |
-| KITTI   | 0926-0009   | TBA  |
-| KITTI   | 0926-0013   | TBA  |
-| KITTI   | 0926-0014   | TBA  |
-| KITTI   | 0926-0015   | TBA  |
-| KITTI   | 0926-0032   | TBA  |
-| KITTI   | 0926-0051   | TBA  |
-| KITTI   | 0926-0101   | TBA  |
-| Hsinchu | GuangfuRoad | TBA  |
+| Dataset | Sequence    | Bag File                                             | Ground Truth Trajectory                              |
+| ------- | ----------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| KITTI   | 0926-0009   | [bag](http://140.113.150.180:5000/sharing/BrHtqyElq) | [tum](http://140.113.150.180:5000/sharing/HGebyDSCR) |
+| KITTI   | 0926-0013   | [bag](http://140.113.150.180:5000/sharing/AQQa3kMSH) | [tum](http://140.113.150.180:5000/sharing/gREpr4xdI) |
+| KITTI   | 0926-0014   | [bag](http://140.113.150.180:5000/sharing/HOgV5T79H) | [tum](http://140.113.150.180:5000/sharing/POuFRJBQI) |
+| KITTI   | 0926-0015   | [bag](http://140.113.150.180:5000/sharing/XnoNLKSUQ) | [tum](http://140.113.150.180:5000/sharing/RBw1BeftU) |
+| KITTI   | 0926-0032   | [bag](http://140.113.150.180:5000/sharing/ikbtkpWve) | [tum](http://140.113.150.180:5000/sharing/aQdaEnVjc) |
+| KITTI   | 0926-0051   | [bag](http://140.113.150.180:5000/sharing/N1o9NcgU4) | [tum](http://140.113.150.180:5000/sharing/Wzu8QWoEC) |
+| KITTI   | 0926-0101   | [bag](http://140.113.150.180:5000/sharing/lhhohwfJT) | [tum](http://140.113.150.180:5000/sharing/JCOaJHw04) |
+| Hsinchu | GuangfuRoad | TBA                                                  | TBA                                                  |
 
+Ground truth robot trajectories (based on GPS data provided by KITTI) are stored
+as [the TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#ground-truth_trajectories).
+Each row has 8 components containing timestamps (sec), xyz-position (meter), and
+xyzw-orientation (quaternion):
+
+```
+timestamp x y z qx qy qz qw
+```
 
 ## :running_man: Run
 
 Please follow the steps to execute LIO-SEGMOT properly:
 
 1. Launch the core LIO-SEGMOT service:
+
    ```bash
    #!/bin/bash
    # Please select one of the following configs to launch the service properly:
@@ -123,6 +131,7 @@ Please follow the steps to execute LIO-SEGMOT properly:
    # 3. Undefined (same as KITTI configuration)
    roslaunch lio_sam run.launch
    ```
+
 2. Launch the selected object detection service:
    ```bash
    #!/bin/bash
