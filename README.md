@@ -10,10 +10,22 @@ via **S**imultaneous **Eg**o-motion Estimation and **M**ultiple **O**bject
 You can check out [our video](https://youtu.be/5HtnDFPerVo) to understand the
 main idea of LIO-SEGMOT.
 
-> :rotating_light: ️The LIO-SEGMOT paper is submitted to [ICRA
-> 2023](https://www.icra2023.org/) in Sept. 2022 and it is under review now. We
-> do not publish this work yet, so please **DO NOT** share the code or any core
-> concepts to other people that are not GPL or G-PAL members. Thank you!
+This work is accepted for publication in [ICRA 2023](https://www.icra2023.org/).
+If you use this project in your research, please cite:
+
+```bibtex
+@article{lin2023lio-segmot,
+  title={Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry},
+  author={Lin, Yu-Kai and Lin, Wen-Chieh and Wang, Chieh-Chih},
+  booktitle = {2023 International Conference on Robotics and Automation, {ICRA} 2023,
+               London, UK, May 29 - June 2, 2023},
+  pages     = {1--7},
+  year      = {2023},
+}
+```
+
+> We are preparing our paper now. We will release the preprint and update the
+> citation later.
 
 - [:gear: Installation](#gear-installation)
   - [Step 1. Preparing the Dependencies](#step-1-preparing-the-dependencies)
@@ -21,7 +33,9 @@ main idea of LIO-SEGMOT.
   - [Step 3. Preparing Object Detection Services](#step-3-preparing-object-detection-services)
 - [:card_file_box: Sample Datasets](#card_file_box-sample-datasets)
 - [:running_man: Run](#running_man-run)
-- [:wheelchair: API of LIO-SEGMOT](#wheelchair-api-of-lio-segmot)
+- [:wheelchair: Services of LIO-SEGMOT](#wheelchair-services-of-lio-segmot)
+  - [`/lio_segmot/save_map`](#lio_segmotsave_map)
+  - [`/lio_segmot/save_estimation_result`](#lio_segmotsave_estimation_result)
 - [:memo: Some Remarks](#memo-some-remarks)
 
 ## :gear: Installation
@@ -117,7 +131,13 @@ timestamp x y z qx qy qz qw
 
 Please follow the steps to execute LIO-SEGMOT properly:
 
-1. Launch the core LIO-SEGMOT service:
+1. (Optional) Launch the ROS core:
+
+   ```bash
+   roscore
+   ```
+
+2. Launch the core LIO-SEGMOT service:
 
    ```bash
    #!/bin/bash
@@ -132,23 +152,97 @@ Please follow the steps to execute LIO-SEGMOT properly:
    roslaunch lio_segmot run.launch
    ```
 
-2. Launch the selected object detection service:
+3. Launch the selected object detection service:
    ```bash
    #!/bin/bash
    # SE-SSD-ROS & livox_detection_lio_segmot
    python3 ros_main.py
    ```
-3. Start the customized ROS bag player:
+4. Start the customized ROS bag player:
    ```bash
    #!/bin/bash
    rosrun lio_segmot lio_segmot_offlineBagPlayer _bag_filename:="path/to/your/sequence.bag"
    ```
 
-## :wheelchair: API of LIO-SEGMOT
+## :wheelchair: Services of LIO-SEGMOT
 
-> This section aims at telling you some APIs to access the results of
-> LIO-SEGMOT, but I still need some time to write down them.
-> :smiling_face_with_tear:
+### `/lio_segmot/save_map`
+
+```txt
+Usage: rosservice call /lio_sam/save_map [RESOLUTION] [OUTPUT_DIR]
+
+Example: rosservice call /lio_sam/save_map 0.2 /path/to/a/directory/
+```
+
+This service saves LiDAR map to the local machine.
+
+### `/lio_segmot/save_estimation_result`
+
+```txt
+Usage: rosservice call /lio_sam/save_estimation_result
+```
+
+This service outputs current estimation results including
+
+- `nav_msgs::Path robotTrajectory`: The robot trajectory
+- (INTERNAL USE) `nav_msgs::Path[] objectTrajectories`: Trajectories for each object (indexed by the factor graph)
+- (INTERNAL USE) `nav_msgs::Path[] objectVelocities`: Linear and angular velocities for each object (indexed by the factor graph)
+- `nav_msgs::Path[] trackingObjectTrajectories`: Trajectories for each object (indexed by LIO-SEGMOT)
+- `nav_msgs::Path[] trackingObjectVelocities`: Linear and angular velocities for each object (indexed by LIO-SEGMOT)
+- `lio_segmot::ObjectStateArray[] trackingObjectStates`: States for each object during its lifetime (indexed by LIO-SEGMOT)
+- (INTERNAL USE) `lio_segmot::flags[] objectFlags`: Flags for each object during its lifetime (indexed by the factor graph)
+- `lio_segmot::flags[] trackingObjectFlags`: Flags for each object during its lifetime (indexed by LIO-SEGMOT)
+
+in which custom types `lio_segmot::ObjectStateArray` (underlying `lio_segmot::ObjectState`) and `lio_segmot::flags` are given by
+
+- `lio_segmot::ObjectStateArray`
+
+  ```cpp
+  Header header
+  lio_segmot::ObjectState[] objects
+  ```
+
+- `lio_segmot::ObjectState`
+
+  ```cpp
+  Header header
+
+  // The corresponding detection (measurement)
+  jsk_recognition_msgs::BoundingBox detection
+
+  // States of object pose and velocity in the factor graph
+  geometry_msgs::Pose pose
+  geometry_msgs::Pose velocity
+
+  // Residual and innovation of the tightly-coupled detection factor
+  bool hasTightlyCoupledDetectionError
+  float64 tightlyCoupledDetectionError         // Residual
+  float64 initialTightlyCoupledDetectionError  // Innovation
+
+  // Residual and innovation of the loosely-coupled detection factor
+  bool hasLooselyCoupledDetectionError
+  float64 looselyCoupledDetectionError         // Residual
+  float64 initialLooselyCoupledDetectionError  // Innovation
+
+  // Residual and innovation of the smooth movement factor
+  bool hasMotionError
+  float64 motionError         // Residual
+  float64 initialMotionError  // Innovation
+
+  int32 index            // Object index
+  int32 lostCount        // Counter of losing detections
+  float64 confidence     // Detection's confidence score (given by detection methods)
+  bool isTightlyCoupled  // Is the object tightly-coupled at this moment?
+  bool isFirst           // Is the object just initialized at this moment?
+  ```
+
+- `lio_segmot/flags`
+
+  ```cpp
+  // Flags of the object in its lifetime
+  int32[] flags  // 1: the object is tightly-coupled
+                 // 0: the object is loosely-coupled
+  ```
 
 ## :memo: Some Remarks
 
