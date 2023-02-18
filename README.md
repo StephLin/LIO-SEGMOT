@@ -63,11 +63,11 @@ Please prepare the following packages or libraries used in LIO-SEGMOT:
                        "ros-${ROS_DISTRO}-jsk-recognition-msgs" \
                        "ros-${ROS_DISTRO}-jsk-rviz-plugins"
    ```
-2. [gtsam 4.0.2](https://github.com/borglab/gtsam/tree/4.0.2)
+2. [gtsam 4.0.3](https://github.com/borglab/gtsam/tree/4.0.3)
    ```bash
    #!/bin/bash
    cd ~
-   git clone -b 4.0.2 https://github.com/borglab/gtsam && cd gtsam
+   git clone -b 4.0.3 https://github.com/borglab/gtsam && cd gtsam
    mkdir build && cd build
    cmake ..
    sudo make install
