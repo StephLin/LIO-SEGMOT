@@ -77,7 +77,7 @@ catkin_make
 
 We provide two object detection services for LIO-SEGMOT:
 
-- [StephLin/SE-SSD-ROS (no license)](https://github.com/StephLin/SE-SSD-ROS)
+- [StephLin/SE-SSD-ROS (Apache-2.0 license)](https://github.com/StephLin/SE-SSD-ROS)
   (based on [Vegeta2020/SE-SSD](https://github.com/Vegeta2020/SE-SSD))
 - [StephLin/livox_detection_lio_segmot (GPL-3.0 license)](https://github.com/StephLin/livox_detection_lio_segmot)
   (based on [Livox-SDK/livox_detection](https://github.com/Livox-SDK/livox_detection))
