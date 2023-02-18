@@ -1,4 +1,4 @@
-#include "lio_sam/cloud_info.h"
+#include "lio_segmot/cloud_info.h"
 #include "utility.h"
 
 struct VelodynePointXYZIRT {
@@ -75,7 +75,7 @@ class ImageProjection : public ParamServer {
   float odomIncreY;
   float odomIncreZ;
 
-  lio_sam::cloud_info cloudInfo;
+  lio_segmot::cloud_info cloudInfo;
   double timeScanCur;
   double timeScanEnd;
   std_msgs::Header cloudHeader;
@@ -86,9 +86,9 @@ class ImageProjection : public ParamServer {
     subOdom       = nh.subscribe<nav_msgs::Odometry>(odomTopic + "_incremental", 2000, &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
     subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5, &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
-    pubExtractedCloud = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
-    pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
-    pubReady          = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
+    pubExtractedCloud = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/deskew/cloud_deskewed", 1);
+    pubLaserCloudInfo = nh.advertise<lio_segmot::cloud_info>("lio_segmot/deskew/cloud_info", 1);
+    pubReady          = nh.advertise<std_msgs::Empty>("lio_segmot/ready", 1);
 
     allocateMemory();
     resetParameters();
@@ -563,7 +563,7 @@ class ImageProjection : public ParamServer {
 };
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "lio_sam");
+  ros::init(argc, argv, "lio_segmot");
 
   ImageProjection IP;
 

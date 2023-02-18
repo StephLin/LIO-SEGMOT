@@ -1,4 +1,4 @@
-lio_sam:
+lio_segmot:
 
   # Topics
   pointCloudTopic: "points_raw"               # Point cloud data

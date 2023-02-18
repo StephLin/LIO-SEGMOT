@@ -174,7 +174,7 @@ Visualization Manager:
             Shaft Length: 1
             Shaft Radius: 0.05000000074505806
             Value: Axes
-          Topic: /lio_sam/mapping/odometry
+          Topic: /lio_segmot/mapping/odometry
           Unreliable: false
           Value: false
       Enabled: false
@@ -206,7 +206,7 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/mapping/cloud_deskewed
+          Topic: /lio_segmot/mapping/cloud_deskewed
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
@@ -234,7 +234,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/mapping/cloud_registered
+          Topic: /lio_segmot/mapping/cloud_registered
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -242,7 +242,7 @@ Visualization Manager:
         - Class: jsk_rviz_plugin/BoundingBoxArray
           Enabled: true
           Name: Detections
-          Topic: /lio_sam/mapping/detections
+          Topic: /lio_segmot/mapping/detections
           Unreliable: false
           Value: true
           alpha: 0.6000000238418579
@@ -278,7 +278,7 @@ Visualization Manager:
           Size (Pixels): 5
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/feature/cloud_corner
+          Topic: /lio_segmot/feature/cloud_corner
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -306,7 +306,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/feature/cloud_surface
+          Topic: /lio_segmot/feature/cloud_surface
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -340,7 +340,7 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/mapping/cloud_registered
+          Topic: /lio_segmot/mapping/cloud_registered
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
@@ -368,7 +368,7 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.10000000149011612
           Style: Flat Squares
-          Topic: /lio_sam/mapping/map_local
+          Topic: /lio_segmot/mapping/map_local
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -396,7 +396,7 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /lio_sam/mapping/map_global
+          Topic: /lio_segmot/mapping/map_global
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
@@ -421,7 +421,7 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /lio_sam/mapping/path
+          Topic: /lio_segmot/mapping/path
           Unreliable: false
           Value: true
         - Alpha: 1
@@ -444,7 +444,7 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /lio_sam/imu/path
+          Topic: /lio_segmot/imu/path
           Unreliable: false
           Value: true
         - Alpha: 1
@@ -470,14 +470,14 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.30000001192092896
           Style: Flat Squares
-          Topic: /lio_sam/mapping/icp_loop_closure_corrected_cloud
+          Topic: /lio_segmot/mapping/icp_loop_closure_corrected_cloud
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /lio_sam/mapping/loop_closure_constraints
+          Marker Topic: /lio_segmot/mapping/loop_closure_constraints
           Name: Loop constraint
           Namespaces:
             {}
@@ -486,7 +486,7 @@ Visualization Manager:
         - Class: jsk_rviz_plugin/BoundingBoxArray
           Enabled: false
           Name: Dynamic Objects
-          Topic: /lio_sam/mapping/objects
+          Topic: /lio_segmot/mapping/objects
           Unreliable: false
           Value: false
           alpha: 0.800000011920929
@@ -497,7 +497,7 @@ Visualization Manager:
           show coords: true
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /lio_sam/mapping/object_paths
+          Marker Topic: /lio_segmot/mapping/object_paths
           Name: Dynamic Object Paths
           Namespaces:
             {}
@@ -505,7 +505,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /lio_sam/mapping/object_labels
+          Marker Topic: /lio_segmot/mapping/object_labels
           Name: Dynamic Object Labels
           Namespaces:
             {}
@@ -513,7 +513,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /lio_sam/mapping/object_velocities
+          Marker Topic: /lio_segmot/mapping/object_velocities
           Name: Dynamic Object Predicted Path
           Namespaces:
             {}
@@ -521,7 +521,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /lio_sam/mapping/tightly_coupled_object_points
+          Marker Topic: /lio_segmot/mapping/tightly_coupled_object_points
           Name: Tightly-coupled nodes
           Namespaces:
             {}
@@ -534,7 +534,7 @@ Visualization Manager:
         - Class: jsk_rviz_plugin/BoundingBoxArray
           Enabled: true
           Name: Dynamic Objects
-          Topic: /lio_sam/tracking/objects
+          Topic: /lio_segmot/tracking/objects
           Unreliable: false
           Value: true
           alpha: 0.800000011920929
@@ -545,7 +545,7 @@ Visualization Manager:
           show coords: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /lio_sam/tracking/object_paths
+          Marker Topic: /lio_segmot/tracking/object_paths
           Name: Dynamic Object Paths
           Namespaces:
             {}
@@ -553,7 +553,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /lio_sam/tracking/object_labels
+          Marker Topic: /lio_segmot/tracking/object_labels
           Name: Dynamic Object Labels
           Namespaces:
             {}
@@ -561,7 +561,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /lio_sam/tracking/object_velocities
+          Marker Topic: /lio_segmot/tracking/object_velocities
           Name: Dynamic Object Predicted Path
           Namespaces:
             {}
@@ -569,7 +569,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /lio_sam/tracking/object_velocity_arrows
+          Marker Topic: /lio_segmot/tracking/object_velocity_arrows
           Name: Dynamic Object Predicted Path Arrow
           Namespaces:
             {}

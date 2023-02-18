@@ -194,26 +194,26 @@ class ParamServer {
   ParamServer() {
     nh.param<std::string>("/robot_id", robot_id, "roboat");
 
-    nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
-    nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
-    nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
-    nh.param<std::string>("lio_sam/gpsTopic", gpsTopic, "odometry/gps");
+    nh.param<std::string>("lio_segmot/pointCloudTopic", pointCloudTopic, "points_raw");
+    nh.param<std::string>("lio_segmot/imuTopic", imuTopic, "imu_correct");
+    nh.param<std::string>("lio_segmot/odomTopic", odomTopic, "odometry/imu");
+    nh.param<std::string>("lio_segmot/gpsTopic", gpsTopic, "odometry/gps");
 
-    nh.param<std::string>("lio_sam/lidarFrame", lidarFrame, "base_link");
-    nh.param<std::string>("lio_sam/baselinkFrame", baselinkFrame, "base_link");
-    nh.param<std::string>("lio_sam/odometryFrame", odometryFrame, "odom");
-    nh.param<std::string>("lio_sam/mapFrame", mapFrame, "map");
+    nh.param<std::string>("lio_segmot/lidarFrame", lidarFrame, "base_link");
+    nh.param<std::string>("lio_segmot/baselinkFrame", baselinkFrame, "base_link");
+    nh.param<std::string>("lio_segmot/odometryFrame", odometryFrame, "odom");
+    nh.param<std::string>("lio_segmot/mapFrame", mapFrame, "map");
 
-    nh.param<bool>("lio_sam/useImuHeadingInitialization", useImuHeadingInitialization, false);
-    nh.param<bool>("lio_sam/useGpsElevation", useGpsElevation, false);
-    nh.param<float>("lio_sam/gpsCovThreshold", gpsCovThreshold, 2.0);
-    nh.param<float>("lio_sam/poseCovThreshold", poseCovThreshold, 25.0);
+    nh.param<bool>("lio_segmot/useImuHeadingInitialization", useImuHeadingInitialization, false);
+    nh.param<bool>("lio_segmot/useGpsElevation", useGpsElevation, false);
+    nh.param<float>("lio_segmot/gpsCovThreshold", gpsCovThreshold, 2.0);
+    nh.param<float>("lio_segmot/poseCovThreshold", poseCovThreshold, 25.0);
 
-    nh.param<bool>("lio_sam/savePCD", savePCD, false);
-    nh.param<std::string>("lio_sam/savePCDDirectory", savePCDDirectory, "/Downloads/LOAM/");
+    nh.param<bool>("lio_segmot/savePCD", savePCD, false);
+    nh.param<std::string>("lio_segmot/savePCDDirectory", savePCDDirectory, "/Downloads/LOAM/");
 
     std::string sensorStr;
-    nh.param<std::string>("lio_sam/sensor", sensorStr, "");
+    nh.param<std::string>("lio_segmot/sensor", sensorStr, "");
     if (sensorStr == "velodyne") {
       sensor = SensorType::VELODYNE;
     } else if (sensorStr == "ouster") {
@@ -224,71 +224,71 @@ class ParamServer {
       ros::shutdown();
     }
 
-    nh.param<int>("lio_sam/N_SCAN", N_SCAN, 16);
-    nh.param<int>("lio_sam/Horizon_SCAN", Horizon_SCAN, 1800);
-    nh.param<int>("lio_sam/downsampleRate", downsampleRate, 1);
-    nh.param<float>("lio_sam/lidarMinRange", lidarMinRange, 1.0);
-    nh.param<float>("lio_sam/lidarMaxRange", lidarMaxRange, 1000.0);
+    nh.param<int>("lio_segmot/N_SCAN", N_SCAN, 16);
+    nh.param<int>("lio_segmot/Horizon_SCAN", Horizon_SCAN, 1800);
+    nh.param<int>("lio_segmot/downsampleRate", downsampleRate, 1);
+    nh.param<float>("lio_segmot/lidarMinRange", lidarMinRange, 1.0);
+    nh.param<float>("lio_segmot/lidarMaxRange", lidarMaxRange, 1000.0);
 
-    nh.param<float>("lio_sam/imuAccNoise", imuAccNoise, 0.01);
-    nh.param<float>("lio_sam/imuGyrNoise", imuGyrNoise, 0.001);
-    nh.param<float>("lio_sam/imuAccBiasN", imuAccBiasN, 0.0002);
-    nh.param<float>("lio_sam/imuGyrBiasN", imuGyrBiasN, 0.00003);
-    nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
-    nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
-    nh.param<vector<double>>("lio_sam/extrinsicRot", extRotV, vector<double>());
-    nh.param<vector<double>>("lio_sam/extrinsicRPY", extRPYV, vector<double>());
-    nh.param<vector<double>>("lio_sam/extrinsicTrans", extTransV, vector<double>());
+    nh.param<float>("lio_segmot/imuAccNoise", imuAccNoise, 0.01);
+    nh.param<float>("lio_segmot/imuGyrNoise", imuGyrNoise, 0.001);
+    nh.param<float>("lio_segmot/imuAccBiasN", imuAccBiasN, 0.0002);
+    nh.param<float>("lio_segmot/imuGyrBiasN", imuGyrBiasN, 0.00003);
+    nh.param<float>("lio_segmot/imuGravity", imuGravity, 9.80511);
+    nh.param<float>("lio_segmot/imuRPYWeight", imuRPYWeight, 0.01);
+    nh.param<vector<double>>("lio_segmot/extrinsicRot", extRotV, vector<double>());
+    nh.param<vector<double>>("lio_segmot/extrinsicRPY", extRPYV, vector<double>());
+    nh.param<vector<double>>("lio_segmot/extrinsicTrans", extTransV, vector<double>());
     extRot   = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRotV.data(), 3, 3);
     extRPY   = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRPYV.data(), 3, 3);
     extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
     extQRPY  = Eigen::Quaterniond(extRPY);
 
-    nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
-    nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
-    nh.param<int>("lio_sam/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
-    nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
+    nh.param<float>("lio_segmot/edgeThreshold", edgeThreshold, 0.1);
+    nh.param<float>("lio_segmot/surfThreshold", surfThreshold, 0.1);
+    nh.param<int>("lio_segmot/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
+    nh.param<int>("lio_segmot/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
 
-    nh.param<float>("lio_sam/odometrySurfLeafSize", odometrySurfLeafSize, 0.2);
-    nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
-    nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
+    nh.param<float>("lio_segmot/odometrySurfLeafSize", odometrySurfLeafSize, 0.2);
+    nh.param<float>("lio_segmot/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
+    nh.param<float>("lio_segmot/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
 
-    nh.param<float>("lio_sam/z_tollerance", z_tollerance, FLT_MAX);
-    nh.param<float>("lio_sam/rotation_tollerance", rotation_tollerance, FLT_MAX);
+    nh.param<float>("lio_segmot/z_tollerance", z_tollerance, FLT_MAX);
+    nh.param<float>("lio_segmot/rotation_tollerance", rotation_tollerance, FLT_MAX);
 
-    nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
-    nh.param<double>("lio_sam/mappingProcessInterval", mappingProcessInterval, 0.15);
+    nh.param<int>("lio_segmot/numberOfCores", numberOfCores, 2);
+    nh.param<double>("lio_segmot/mappingProcessInterval", mappingProcessInterval, 0.15);
 
-    nh.param<float>("lio_sam/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
-    nh.param<float>("lio_sam/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
-    nh.param<float>("lio_sam/surroundingKeyframeDensity", surroundingKeyframeDensity, 1.0);
-    nh.param<float>("lio_sam/surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius, 50.0);
+    nh.param<float>("lio_segmot/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
+    nh.param<float>("lio_segmot/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
+    nh.param<float>("lio_segmot/surroundingKeyframeDensity", surroundingKeyframeDensity, 1.0);
+    nh.param<float>("lio_segmot/surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius, 50.0);
 
-    nh.param<bool>("lio_sam/loopClosureEnableFlag", loopClosureEnableFlag, false);
-    nh.param<float>("lio_sam/loopClosureFrequency", loopClosureFrequency, 1.0);
-    nh.param<int>("lio_sam/surroundingKeyframeSize", surroundingKeyframeSize, 50);
-    nh.param<float>("lio_sam/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
-    nh.param<float>("lio_sam/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
-    nh.param<int>("lio_sam/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
-    nh.param<float>("lio_sam/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
+    nh.param<bool>("lio_segmot/loopClosureEnableFlag", loopClosureEnableFlag, false);
+    nh.param<float>("lio_segmot/loopClosureFrequency", loopClosureFrequency, 1.0);
+    nh.param<int>("lio_segmot/surroundingKeyframeSize", surroundingKeyframeSize, 50);
+    nh.param<float>("lio_segmot/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
+    nh.param<float>("lio_segmot/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
+    nh.param<int>("lio_segmot/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
+    nh.param<float>("lio_segmot/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
 
-    nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
-    nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
-    nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
+    nh.param<float>("lio_segmot/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
+    nh.param<float>("lio_segmot/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
+    nh.param<float>("lio_segmot/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
-    nh.param<float>("lio_sam/detectionMatchThreshold", detectionMatchThreshold, 19.5);
-    nh.param<vector<double>>("lio_sam/dataAssociationVarianceVector", dataAssociationVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
-    nh.param<vector<double>>("lio_sam/earlyLooselyCoupledMatchingVarianceVector", earlyLooselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
-    nh.param<vector<double>>("lio_sam/looselyCoupledMatchingVarianceVector", looselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
-    nh.param<vector<double>>("lio_sam/tightlyCoupledMatchingVarianceVector", tightlyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<float>("lio_segmot/detectionMatchThreshold", detectionMatchThreshold, 19.5);
+    nh.param<vector<double>>("lio_segmot/dataAssociationVarianceVector", dataAssociationVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_segmot/earlyLooselyCoupledMatchingVarianceVector", earlyLooselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_segmot/looselyCoupledMatchingVarianceVector", looselyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_segmot/tightlyCoupledMatchingVarianceVector", tightlyCoupledMatchingVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
-    nh.param<vector<double>>("lio_sam/priorOdometryDiagonalVarianceVector", priorOdometryDiagonalVarianceVector, {1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8});
-    nh.param<vector<double>>("lio_sam/odometryDiagonalVarianceVector", odometryDiagonalVarianceVector, {1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4});
-    nh.param<vector<double>>("lio_sam/earlyConstantVelocityDiagonalVarianceVector", earlyConstantVelocityDiagonalVarianceVector, {1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1});
-    nh.param<vector<double>>("lio_sam/constantVelocityDiagonalVarianceVector", constantVelocityDiagonalVarianceVector, {1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1});
-    nh.param<vector<double>>("lio_sam/motionDiagonalVarianceVector", motionDiagonalVarianceVector, {1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2});
-    nh.param<vector<double>>("lio_sam/looselyCoupledDetectionVarianceVector", looselyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
-    nh.param<vector<double>>("lio_sam/tightlyCoupledDetectionVarianceVector", tightlyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_segmot/priorOdometryDiagonalVarianceVector", priorOdometryDiagonalVarianceVector, {1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8});
+    nh.param<vector<double>>("lio_segmot/odometryDiagonalVarianceVector", odometryDiagonalVarianceVector, {1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4});
+    nh.param<vector<double>>("lio_segmot/earlyConstantVelocityDiagonalVarianceVector", earlyConstantVelocityDiagonalVarianceVector, {1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1});
+    nh.param<vector<double>>("lio_segmot/constantVelocityDiagonalVarianceVector", constantVelocityDiagonalVarianceVector, {1e-3, 1e-3, 1e-3, 2e-1, 1e-1, 1e-1});
+    nh.param<vector<double>>("lio_segmot/motionDiagonalVarianceVector", motionDiagonalVarianceVector, {1e-4, 1e-4, 1e-2, 1e-1, 1e-2, 1e-2});
+    nh.param<vector<double>>("lio_segmot/looselyCoupledDetectionVarianceVector", looselyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
+    nh.param<vector<double>>("lio_segmot/tightlyCoupledDetectionVarianceVector", tightlyCoupledDetectionVarianceVector, {1e-4, 1e-4, 1e-4, 1e-2, 2e-3, 2e-3});
 
     dataAssociationVarianceEigenVector             = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(dataAssociationVarianceVector.data());
     earlyLooselyCoupledMatchingVarianceEigenVector = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(earlyLooselyCoupledMatchingVarianceVector.data());
@@ -303,16 +303,16 @@ class ParamServer {
     looselyCoupledDetectionVarianceEigenVector       = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(looselyCoupledDetectionVarianceVector.data());
     tightlyCoupledDetectionVarianceEigenVector       = Eigen::Map<const Eigen::Matrix<double, 6, 1>>(tightlyCoupledDetectionVarianceVector.data());
 
-    nh.param<int>("lio_sam/numberOfEarlySteps", numberOfEarlySteps, 1);
-    nh.param<int>("lio_sam/numberOfPreLooseCouplingSteps", numberOfPreLooseCouplingSteps, 10);
-    nh.param<int>("lio_sam/numberOfVelocityConsistencySteps", numberOfVelocityConsistencySteps, 4);
-    nh.param<int>("lio_sam/numberOfInterLooseCouplingSteps", numberOfInterLooseCouplingSteps, 0);
-    nh.param<float>("lio_sam/tightCouplingDetectionErrorThreshold", tightCouplingDetectionErrorThreshold, 500.0);
+    nh.param<int>("lio_segmot/numberOfEarlySteps", numberOfEarlySteps, 1);
+    nh.param<int>("lio_segmot/numberOfPreLooseCouplingSteps", numberOfPreLooseCouplingSteps, 10);
+    nh.param<int>("lio_segmot/numberOfVelocityConsistencySteps", numberOfVelocityConsistencySteps, 4);
+    nh.param<int>("lio_segmot/numberOfInterLooseCouplingSteps", numberOfInterLooseCouplingSteps, 0);
+    nh.param<float>("lio_segmot/tightCouplingDetectionErrorThreshold", tightCouplingDetectionErrorThreshold, 500.0);
 
-    nh.param<float>("lio_sam/objectAngularVelocityConsistencyVarianceThreshold", objectAngularVelocityConsistencyVarianceThreshold, 1e-5);
-    nh.param<float>("lio_sam/objectLinearVelocityConsistencyVarianceThreshold", objectLinearVelocityConsistencyVarianceThreshold, 1e-2);
+    nh.param<float>("lio_segmot/objectAngularVelocityConsistencyVarianceThreshold", objectAngularVelocityConsistencyVarianceThreshold, 1e-5);
+    nh.param<float>("lio_segmot/objectLinearVelocityConsistencyVarianceThreshold", objectLinearVelocityConsistencyVarianceThreshold, 1e-2);
 
-    nh.param<int>("lio_sam/trackingStepsForLostObject", trackingStepsForLostObject, 3);
+    nh.param<int>("lio_segmot/trackingStepsForLostObject", trackingStepsForLostObject, 3);
 
     usleep(100);
   }

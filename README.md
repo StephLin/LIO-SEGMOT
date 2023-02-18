@@ -123,13 +123,13 @@ Please follow the steps to execute LIO-SEGMOT properly:
    #!/bin/bash
    # Please select one of the following configs to launch the service properly:
    # 1. With KITTI configuration
-   roslaunch lio_sam run_kitti.launch
+   roslaunch lio_segmot run_kitti.launch
 
    # 2. With Hsinchu configuration
-   roslaunch lio_sam run_hsinchu.launch
+   roslaunch lio_segmot run_hsinchu.launch
 
    # 3. Undefined (same as KITTI configuration)
-   roslaunch lio_sam run.launch
+   roslaunch lio_segmot run.launch
    ```
 
 2. Launch the selected object detection service:
@@ -141,7 +141,7 @@ Please follow the steps to execute LIO-SEGMOT properly:
 3. Start the customized ROS bag player:
    ```bash
    #!/bin/bash
-   rosrun lio_sam lio_sam_offlineBagPlayer _bag_filename:="path/to/your/sequence.bag"
+   rosrun lio_segmot lio_segmot_offlineBagPlayer _bag_filename:="path/to/your/sequence.bag"
    ```
 
 ## :wheelchair: API of LIO-SEGMOT

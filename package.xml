@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>lio_sam</name>
+  <name>lio_segmot</name>
   <version>1.0.0</version>
   <description>Lidar Odometry</description>
 

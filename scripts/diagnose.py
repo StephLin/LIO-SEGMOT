@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import rospy
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from lio_sam.msg import ObjectState, ObjectStateArray
+from lio_segmot.msg import ObjectState, ObjectStateArray
 from std_msgs.msg import Header
 
 # ------------------------------------------------------------------------------------------------ #
@@ -296,8 +296,8 @@ class Callback:
 
 def ros_main():
     callback = Callback(queue)
-    rospy.init_node("lio_sammot_diagnose", anonymous=True)
-    rospy.Subscriber("lio_sam/mapping/object_states", ObjectStateArray, callback)
+    rospy.init_node("lio_segmotmot_diagnose", anonymous=True)
+    rospy.Subscriber("lio_segmot/mapping/object_states", ObjectStateArray, callback)
     rospy.spin()
 
 

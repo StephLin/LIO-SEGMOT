@@ -1,4 +1,4 @@
-#include "lio_sam/cloud_info.h"
+#include "lio_segmot/cloud_info.h"
 #include "utility.h"
 
 struct smoothness_t {
@@ -26,7 +26,7 @@ class FeatureExtraction : public ParamServer {
 
   pcl::VoxelGrid<PointType> downSizeFilter;
 
-  lio_sam::cloud_info cloudInfo;
+  lio_segmot::cloud_info cloudInfo;
   std_msgs::Header cloudHeader;
 
   std::vector<smoothness_t> cloudSmoothness;
@@ -35,11 +35,11 @@ class FeatureExtraction : public ParamServer {
   int *cloudLabel;
 
   FeatureExtraction() {
-    subLaserCloudInfo = nh.subscribe<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1, &FeatureExtraction::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
+    subLaserCloudInfo = nh.subscribe<lio_segmot::cloud_info>("lio_segmot/deskew/cloud_info", 1, &FeatureExtraction::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-    pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1);
-    pubCornerPoints   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1);
-    pubSurfacePoints  = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
+    pubLaserCloudInfo = nh.advertise<lio_segmot::cloud_info>("lio_segmot/feature/cloud_info", 1);
+    pubCornerPoints   = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/feature/cloud_corner", 1);
+    pubSurfacePoints  = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/feature/cloud_surface", 1);
 
     initializationValue();
   }
@@ -58,7 +58,7 @@ class FeatureExtraction : public ParamServer {
     cloudLabel          = new int[N_SCAN * Horizon_SCAN];
   }
 
-  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr &msgIn) {
+  void laserCloudInfoHandler(const lio_segmot::cloud_infoConstPtr &msgIn) {
     cloudInfo   = *msgIn;                                     // new cloud info
     cloudHeader = msgIn->header;                              // new cloud header
     pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud);  // new cloud for extraction
@@ -227,7 +227,7 @@ class FeatureExtraction : public ParamServer {
 };
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "lio_sam");
+  ros::init(argc, argv, "lio_segmot");
 
   FeatureExtraction FE;
 
