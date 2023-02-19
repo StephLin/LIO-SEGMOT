@@ -405,29 +405,38 @@ corresponding detections.
 
 ### Limitations of LIO-SEGMOT
 
-Currently, most state-of-the-art object detection approaches (e.g., SE-SSD,
-PointPillars, PointRCNN, PV-RCNN, SPG, and ST3D) are constructed under machine
+Currently, most state-of-the-art object detection approaches (e.g.,
+[SE-SSD](https://arxiv.org/abs/2104.09804),
+[PointPillars](https://arxiv.org/abs/1812.05784),
+[PointRCNN](https://arxiv.org/abs/1812.04244),
+[PV-RCNN](https://arxiv.org/abs/1912.13192),
+[SPG](https://arxiv.org/abs/2108.06709), and
+[ST3D](https://arxiv.org/abs/2103.05346)) are constructed under machine
 learning-based neural network architectures, while the issue of domain
 adaptation for data-driven object detection approaches still remains a
-challenging open problem targeted by recent researches (e.g, SPG and ST3D). That
-is, the performance of object detection models change varying under different
-geographic appearances or weather conditions.
+challenging open problem targeted by recent researches (e.g,
+[SPG](https://arxiv.org/abs/2108.06709) and
+[ST3D](https://arxiv.org/abs/2103.05346)). That is, the performance of object
+detection models change varying under different geographic appearances or
+weather conditions.
 
-SE-SSD is trained under a subset of the KITTI dataset, and thus it might work
-well in other subsets of the KITTI dataset. However, we can observe that there
-are numerous false positive detections in the Hsinchu dataset. Therefore, it
-forces us to choose different detection models (i.e., PointPillars w/ Livox's
-model weights) when experimenting LIO-SEGMOT in different real world datasets.
-In addition, since the model still cannot perform as good detection results in
-the Hsinchu dataset as SE-SSD does in the KITTI dataset, we need to use a more
-strict criterion for the detection constraint in the tightly-coupled detection
-factor checks (by decreasing $\varepsilon^\prime$ from 26.0 to 19.0). This
-points out the first limitation of LIO-SEGMOT. That is, covariance matrices and
-thresholds related to object detections (mainly hyperparameters in the
-hierarchical criterion) are required to be adjusted according to the stability
-of object detections. Despite it affects generalization capability of the
-proposed method, we believe that the problem can be mitigated with the
-breakthrough of the domain adaptation for 3-D object detection.
+[The model weight of SE-SSD](https://github.com/Vegeta2020/SE-SSD) used in
+LIO-SEGMOT is trained under a subset of the KITTI dataset, and thus it might
+work well in other subsets of the KITTI dataset. However, we can observe that
+there are numerous false positive detections in the Hsinchu dataset. Therefore,
+it forces us to choose different detection models (i.e.,
+[PointPillars w/ Livox's model weights](https://github.com/Livox-SDK/livox_detection))
+when experimenting LIO-SEGMOT in different real world datasets. In addition,
+since the model still cannot perform as good detection results in the Hsinchu
+dataset as SE-SSD does in the KITTI dataset, we need to use a more strict
+criterion for the detection constraint in the tightly-coupled detection factor
+checks (by decreasing $\varepsilon^\prime$ from 26.0 to 19.0). This points out
+the first limitation of LIO-SEGMOT. That is, covariance matrices and thresholds
+related to object detections (mainly hyperparameters in the hierarchical
+criterion) are required to be adjusted according to the stability of object
+detections. Despite it affects generalization capability of the proposed method,
+we believe that the problem can be mitigated with the breakthrough of the domain
+adaptation for 3-D object detection.
 
 The second limitation of LIO-SEGMOT is related to the motion model of tracking
 objects. If an object does not move at constant velocity, LIO-SEGMOT may
@@ -447,12 +456,14 @@ There are two possible future research directions of LIO-SEGMOT:
   may break the efficiency of maintaining single root Bayes trees in iSAM2. It
   causes an unignorable computational cost, especially when there are lots of
   dynamic objects coupled in the system. In forthcoming researches, we would
-  like to overcome the bottleneck by introducing the multi-robot iSAM2
-  (MR-iSAM2) algorithm.
+  like to overcome the bottleneck by introducing the
+  [multi-robot iSAM2 (MR-iSAM2)](http://doi.org/10.1109/iros51168.2021.9636687)
+  algorithm.
 - In addition, rule-based coupling conditions make the proposed method lack the
   ability to explore global optimality when considering combinatorial ambiguity
   as unknown integer variables. It raises a complicated mix-integer programming
-  (MIP) problem, whereas a recent work called multi-hypothesis iSAM (MH-iSAM2)
+  (MIP) problem, whereas a recent work called
+  [multi-hypothesis iSAM (MH-iSAM2)](https://www.cs.cmu.edu/~kaess/pub/Hsiao19icra.pdf)
   still promotes us to investigate the challenging problem in the future.
 
 ## :gift: Acknowledgement
