@@ -314,13 +314,13 @@ are the detection constraint and the velocity constraint:
 
 - **(Detection Constraint)** The above equation holds with another given
   covariance matrix
-  
+
 $$
 \Sigma_{\text{Q}_{3,1}}
 $$
-  
-  that satisfies
-  
+
+that satisfies
+
 $$
 \Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0.
 $$
@@ -332,10 +332,10 @@ $$
 \frac{1}{N}\sum_{s=1}^{N} \Big\Vert \text{Log}(\boldsymbol{v}_{t-s,i}) - \text{Log}(\bar{\boldsymbol{v}}_{t,i}) \Big\Vert_{\Sigma_{Q_{3,2}}}^2 \leq \varepsilon
 $$
 
-  with a given covariance matrix $\Sigma_{Q_{3,2}}$, where $N$ is the fixed
-  number of previous velocities of object states and
-  $\bar{\boldsymbol{v}}_{t,i}\in SE(3)$ is the mean of the $N$ previous
-  velocities.
+with a given covariance matrix $\Sigma_{Q_{3,2}}$, where $N$ is the fixed
+number of previous velocities of object states and
+$\bar{\boldsymbol{v}}_{t,i}\in SE(3)$ is the mean of the $N$ previous
+velocities.
 
 If **(Q1)** holds for the detection $\boldsymbol{z}$ and the corresponding
 $i$-th object, the new state of the $i$-th object along with a loosely-coupled
