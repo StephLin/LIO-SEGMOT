@@ -443,14 +443,12 @@ In addition, since the model still cannot perform as good detection results in
 the Hsinchu dataset as SE-SSD does in the KITTI dataset, we need to use a more
 strict criterion for the detection constraint in the tightly-coupled detection
 factor checks (by decreasing $\varepsilon^\prime$ from 26.0 to 19.0). This
-points out the first limitation of LIO-SEGMOT.
-
-This points out the first limitation of LIO-SEGMOT. That is, covariance matrices
-related to object detections (mainly hyperparameters in the hierarchical
-criterion) are required to be adjusted according to the stability of object
-detections. Despite it affects generalization capability of the proposed method,
-we believe that the problem can be mitigated with the breakthrough of the domain
-adaptation for 3-D object detection.
+points out the first limitation of LIO-SEGMOT. That is, covariance matrices and
+thresholds related to object detections (mainly hyperparameters in the
+hierarchical criterion) are required to be adjusted according to the stability
+of object detections. Despite it affects generalization capability of the
+proposed method, we believe that the problem can be mitigated with the
+breakthrough of the domain adaptation for 3-D object detection.
 
 The second limitation of LIO-SEGMOT is related to the motion model of tracking
 objects. If an object does not move at constant velocity, LIO-SEGMOT may
