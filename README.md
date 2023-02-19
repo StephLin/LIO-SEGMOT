@@ -169,9 +169,9 @@ Please follow the steps to execute LIO-SEGMOT properly:
 ### `/lio_segmot/save_map`
 
 ```txt
-Usage: rosservice call /lio_sam/save_map [RESOLUTION] [OUTPUT_DIR]
+Usage: rosservice call /lio_segmot/save_map [RESOLUTION] [OUTPUT_DIR]
 
-Example: rosservice call /lio_sam/save_map 0.2 /path/to/a/directory/
+Example: rosservice call /lio_segmot/save_map 0.2 /path/to/a/directory/
 ```
 
 This service saves LiDAR map to the local machine.
@@ -179,7 +179,7 @@ This service saves LiDAR map to the local machine.
 ### `/lio_segmot/save_estimation_result`
 
 ```txt
-Usage: rosservice call /lio_sam/save_estimation_result
+Usage: rosservice call /lio_segmot/save_estimation_result
 ```
 
 This service outputs current estimation results including
