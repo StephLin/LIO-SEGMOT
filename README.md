@@ -289,23 +289,49 @@ $$
 $$
 
 with given covariance with given covariance matrices
-$\Sigma\in\{\Sigma_{\text{Q}_1},\Sigma_{\text{Q}_2}\}\subsetneq\mathbb{R}^{6\times 6}$
+
+$$
+\Sigma\in\{\Sigma_{\text{Q}_1},\Sigma_{\text{Q}_2}\}\subsetneq\mathbb{R}^{6\times 6}
+$$
+
 and a threshold $\varepsilon>0$. We assume that
-$\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1}$ is positive semidefinite (PSD, i.e.,
-$\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1} \succeq 0$) to prevent ambiguity of the
-hierarchical criterion that **(Q2)** holds but **(Q1)** does not hold.
+
+$$
+\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1}
+$$
+
+is positive semidefinite (PSD), i.e.,
+
+$$
+\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1} \succeq 0,
+$$
+
+to prevent ambiguity of the hierarchical criterion that **(Q2)** holds but
+**(Q1)** does not hold.
 
 Two spatial information-based tests are conducted to determine **(Q3)**, which
 are the detection constraint and the velocity constraint:
 
 - **(Detection Constraint)** The above equation holds with another given
-  covariance matrix $\Sigma_{\text{Q}_{3,1}}$ that satisfies
-  $\Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0$.
+  covariance matrix
+  
+$$
+\Sigma_{\text{Q}_{3,1}}
+$$
+  
+  that satisfies
+  
+$$
+\Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0.
+$$
+
 - **(Velocity constraint)** The variance of velocities in previous steps is
   small enough. That is,
-  $$
-  \frac{1}{N}\sum_{s=1}^{N} \Big\Vert \text{Log}(\boldsymbol{v}_{t-s,i}) - \text{Log}(\bar{\boldsymbol{v}}_{t,i}) \Big\Vert_{\Sigma_{Q_{3,2}}}^2 \leq \varepsilon
-  $$
+
+$$
+\frac{1}{N}\sum_{s=1}^{N} \Big\Vert \text{Log}(\boldsymbol{v}_{t-s,i}) - \text{Log}(\bar{\boldsymbol{v}}_{t,i}) \Big\Vert_{\Sigma_{Q_{3,2}}}^2 \leq \varepsilon
+$$
+
   with a given covariance matrix $\Sigma_{Q_{3,2}}$, where $N$ is the fixed
   number of previous velocities of object states and
   $\bar{\boldsymbol{v}}_{t,i}\in SE(3)$ is the mean of the $N$ previous
@@ -341,9 +367,19 @@ $\varepsilon^\prime$ in the implementation. In addition, we decouple the angular
 part and the linear part of $\Sigma_{\text{Q}_{3,2}}$. The following equations
 are shown to coincide with the expression used in our paper:
 
-- $\displaystyle\Sigma_{\text{Q}_{3,1}} = \left(\frac{\varepsilon^\prime}{\varepsilon}\right)^2 \cdot \displaystyle\Sigma_{\text{Q}_{3,1}}^\prime$,
-- $\displaystyle\Sigma_{\text{Q}_{3,2}}^\prime = \begin{bmatrix}\sigma_{\text{Q}_{3,2}}^\text{A} \\ & \sigma_{\text{Q}_{3,2}}^\text{A} \\ && \sigma_{\text{Q}_{3,2}}^\text{A} \\ &&& \sigma_{\text{Q}_{3,2}}^\text{L} \\ &&&& \sigma_{\text{Q}_{3,2}}^\text{L} \\ &&&&& \sigma_{\text{Q}_{3,2}}^\text{L} \end{bmatrix}$,
-- $\displaystyle\Sigma_{\text{Q}_{3,2}} = \frac{1}{\varepsilon^2} \cdot \displaystyle\Sigma_{\text{Q}_{3,2}}^\prime$.
+$$
+\begin{aligned}
+\displaystyle\Sigma_{\text{Q}_{3,1}} &= \left(\frac{\varepsilon^\prime}{\varepsilon}\right)^2 \cdot \displaystyle\Sigma_{\text{Q}_{3,1}}^\prime, \\
+\displaystyle\Sigma_{\text{Q}_{3,2}}^\prime &= \begin{bmatrix}\sigma_{\text{Q}_{3,2}}^\text{A} \\
+& \sigma_{\text{Q}_{3,2}}^\text{A} \\
+&& \sigma_{\text{Q}_{3,2}}^\text{A} \\
+&&& \sigma_{\text{Q}_{3,2}}^\text{L} \\
+&&&& \sigma_{\text{Q}_{3,2}}^\text{L} \\
+&&&&& \sigma_{\text{Q}_{3,2}}^\text{L}
+\end{bmatrix}, \\
+\displaystyle\Sigma_{\text{Q}_{3,2}} &= \frac{1}{\varepsilon^2} \cdot \displaystyle\Sigma_{\text{Q}_{3,2}}^\prime.
+\end{aligned}
+$$
 
 #### Factor Graph Optimization
 
@@ -410,12 +446,11 @@ factor checks (by decreasing $\varepsilon^\prime$ from 26.0 to 19.0). This
 points out the first limitation of LIO-SEGMOT.
 
 This points out the first limitation of LIO-SEGMOT. That is, covariance matrices
-related to object detections (mainly $\Sigma_{\text{Q}_1}$,
-$\Sigma_{\text{Q}_2}$, $\Sigma_{\text{Q}_{3,1}}$, and $\Sigma_{\text{Q}_{3,2}}$)
-are required to be adjusted according to the stability of object detections.
-Despite it affects generalization capability of the proposed method, we believe
-that the problem can be mitigated with the breakthrough of the domain adaptation
-for 3-D object detection.
+related to object detections (mainly hyperparameters in the hierarchical
+criterion) are required to be adjusted according to the stability of object
+detections. Despite it affects generalization capability of the proposed method,
+we believe that the problem can be mitigated with the breakthrough of the domain
+adaptation for 3-D object detection.
 
 The second limitation of LIO-SEGMOT is related to the motion model of tracking
 objects. If an object does not move at constant velocity, LIO-SEGMOT may
