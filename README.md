@@ -289,23 +289,11 @@ $$
 $$
 
 with given covariance with given covariance matrices
-
-$$
-\Sigma\in\{\Sigma_{\text{Q}_1},\Sigma_{\text{Q}_2}\}\subsetneq\mathbb{R}^{6\times 6}
-$$
-
+$\Sigma\in\{\Sigma_ {\text{Q}_ 1},\Sigma_ {\text{Q}_ 2}\}\subsetneq\mathbb{R}^{6\times 6}$
 and a threshold $\varepsilon>0$. We assume that
-
-$$
-\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1}
-$$
-
+$\Sigma_ {\text{Q}_ 2}-\Sigma_ {\text{Q}_ 1}$
 is positive semidefinite (PSD), i.e.,
-
-$$
-\Sigma_{\text{Q}_2}-\Sigma_{\text{Q}_1} \succeq 0,
-$$
-
+$\Sigma_ {\text{Q}_ 2}-\Sigma_{\text{Q}_ 1} \succeq 0$,
 to prevent ambiguity of the hierarchical criterion that **(Q2)** holds but
 **(Q1)** does not hold.
 
@@ -314,28 +302,19 @@ are the detection constraint and the velocity constraint:
 
 - **(Detection Constraint)** The above equation holds with another given
   covariance matrix
-
-$$
-\Sigma_{\text{Q}_{3,1}}
-$$
-
-that satisfies
-
-$$
-\Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0.
-$$
+  $\Sigma_ {\text{Q}_ {3,1}}$
+  that satisfies
+  $\Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0$.
 
 - **(Velocity constraint)** The variance of velocities in previous steps is
   small enough. That is,
 
-$$
-\frac{1}{N}\sum_{s=1}^{N} \Big\Vert \text{Log}(\boldsymbol{v}_{t-s,i}) - \text{Log}(\bar{\boldsymbol{v}}_{t,i}) \Big\Vert_{\Sigma_{Q_{3,2}}}^2 \leq \varepsilon
-$$
+  $$\frac{1}{N}\sum_ {s=1}^{N} \Big\Vert \text{Log}(\boldsymbol{v}_ {t-s,i}) - \text{Log}(\bar{\boldsymbol{v}}_ {t,i}) \Big\Vert_ {\Sigma_{Q_ {3,2}}}^2 \leq \varepsilon$$
 
-with a given covariance matrix $\Sigma_{Q_{3,2}}$, where $N$ is the fixed
-number of previous velocities of object states and
-$\bar{\boldsymbol{v}}_{t,i}\in SE(3)$ is the mean of the $N$ previous
-velocities.
+  with a given covariance matrix $\Sigma_{Q_{3,2}}$, where $N$ is the fixed
+  number of previous velocities of object states and
+  $\bar{\boldsymbol{v}}_{t,i}\in SE(3)$ is the mean of the $N$ previous
+  velocities.
 
 If **(Q1)** holds for the detection $\boldsymbol{z}$ and the corresponding
 $i$-th object, the new state of the $i$-th object along with a loosely-coupled
