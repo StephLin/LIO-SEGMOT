@@ -304,7 +304,7 @@ are the detection constraint and the velocity constraint:
   covariance matrix
   $\Sigma_ {\text{Q}_ {3,1}}$
   that satisfies
-  $\Sigma_{\text{Q}_{3,1}}-\Sigma_{\text{Q}_{2}} \succeq 0$.
+  $\Sigma_ {\text{Q}_ {3,1}}-\Sigma_ {\text{Q}_ {2}} \succeq 0$.
 
 - **(Velocity constraint)** The variance of velocities in previous steps is
   small enough. That is,
@@ -399,9 +399,9 @@ frequent ID-switching in multiple object tracking due to the above issue, we
 still track each object for a little while, even though they do not have any
 corresponding detections.
 
-| Notation | Setting                      | Description                                                                                | Default Value |
-| -------- | ---------------------------- | ------------------------------------------------------------------------------------------ | ------------- |
-|          | `trackingStepsForLostObject` | Number of steps that LIO-SEGMOT still keeps an object of missing detections in the system. | 3             |
+| Notation     | Setting                      | Description                                                                                | Default Value |
+| ------------ | ---------------------------- | ------------------------------------------------------------------------------------------ | ------------- |
+| $N^\text{L}$ | `trackingStepsForLostObject` | Number of steps that LIO-SEGMOT still keeps an object of missing detections in the system. | 3             |
 
 ### Limitations of LIO-SEGMOT
 
