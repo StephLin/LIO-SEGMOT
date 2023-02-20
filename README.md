@@ -196,12 +196,12 @@ Usage: rosservice call /lio_segmot/save_estimation_result
 This service outputs current estimation results including
 
 - `nav_msgs::Path robotTrajectory`: The robot trajectory
-- <span style="color: gray;">(INTERNAL USE)</span> `nav_msgs::Path[] objectTrajectories`: Trajectories for each object (indexed by the factor graph)
-- <span style="color: gray;">(INTERNAL USE)</span> `nav_msgs::Path[] objectVelocities`: Linear and angular velocities for each object (indexed by the factor graph)
+- $\color{gray}\textsf{(INTERNAL USE)}$ `nav_msgs::Path[] objectTrajectories`: Trajectories for each object (indexed by the factor graph)
+- $\color{gray}\textsf{(INTERNAL USE)}$ `nav_msgs::Path[] objectVelocities`: Linear and angular velocities for each object (indexed by the factor graph)
 - `nav_msgs::Path[] trackingObjectTrajectories`: Trajectories for each object (indexed by LIO-SEGMOT)
 - `nav_msgs::Path[] trackingObjectVelocities`: Linear and angular velocities for each object (indexed by LIO-SEGMOT)
 - `lio_segmot::ObjectStateArray[] trackingObjectStates`: States for each object during its lifetime (indexed by LIO-SEGMOT)
-- <span style="color: gray;">(INTERNAL USE)</span> `lio_segmot::flags[] objectFlags`: Flags for each object during its lifetime (indexed by the factor graph)
+- $\color{gray}\textsf{(INTERNAL USE)}$ `lio_segmot::flags[] objectFlags`: Flags for each object during its lifetime (indexed by the factor graph)
 - `lio_segmot::flags[] trackingObjectFlags`: Flags for each object during its lifetime (indexed by LIO-SEGMOT)
 
 in which custom types `lio_segmot::ObjectStateArray` (underlying `lio_segmot::ObjectState`) and `lio_segmot::flags` are given by
