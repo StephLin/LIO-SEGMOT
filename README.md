@@ -124,7 +124,7 @@ dataset (GuangfuRoad sequence):
 | KITTI   | 0926-0032   | [bag](http://140.113.150.180:5000/sharing/ikbtkpWve) | [tum](http://140.113.150.180:5000/sharing/aQdaEnVjc) |
 | KITTI   | 0926-0051   | [bag](http://140.113.150.180:5000/sharing/N1o9NcgU4) | [tum](http://140.113.150.180:5000/sharing/Wzu8QWoEC) |
 | KITTI   | 0926-0101   | [bag](http://140.113.150.180:5000/sharing/lhhohwfJT) | [tum](http://140.113.150.180:5000/sharing/JCOaJHw04) |
-| Hsinchu | GuangfuRoad | TBA                                                  | TBA                                                  |
+| Hsinchu | GuangfuRoad | [bag](http://gofile.me/56KxB/mz6HOYOMG)              | [tum](http://gofile.me/56KxB/t5smaOAZk)              |
 
 Ground truth robot trajectories (based on GPS data provided by KITTI) are stored
 as [the TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#ground-truth_trajectories).
