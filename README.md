@@ -2,15 +2,16 @@
 
 The official implementation of LIO-SEGMOT (**L**iDAR-**I**nertial **O**dometry
 via **S**imultaneous **Eg**o-motion Estimation and **M**ultiple **O**bject
-**T**racking). This project is based on the open source
-[LIO-SAM](https://github.com/TixiaoShan/LIO-SAM) project.
+**T**racking), an optimization-based odometry approach targeted for dynamic
+environments. LIO-SEGMOT can provide continuous object tracking results while
+preserving the keyframe selection mechanism in the odometry system. This work is
+accepted for publication in [ICRA 2023](https://www.icra2023.org/).
 
 ![TEASER_GIF](./docs/_static/images/LIO-SEGMOT_KITTI_teaser.GIF)
 
 You can check out [our video](https://youtu.be/5HtnDFPerVo) to understand the
 main idea of LIO-SEGMOT.
 
-This work is accepted for publication in [ICRA 2023](https://www.icra2023.org/).
 If you use this project in your research, please cite:
 
 ```bibtex
@@ -161,7 +162,7 @@ Please follow the steps to execute LIO-SEGMOT properly:
    ```bash
    #!/bin/bash
    # SE-SSD-ROS & livox_detection_lio_segmot
-   python3 ros_main.py
+   # Please check their documentation to see how they are launched
    ```
 
 4. Start the customized ROS bag player:
@@ -189,7 +190,6 @@ Please follow the steps to execute LIO-SEGMOT properly:
 
 ```txt
 Usage: rosservice call /lio_segmot/save_map [RESOLUTION] [OUTPUT_DIR]
-
 Example: rosservice call /lio_segmot/save_map 0.2 /path/to/a/directory/
 ```
 
