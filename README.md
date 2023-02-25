@@ -106,10 +106,6 @@ We provide two object detection services for LIO-SEGMOT:
 
 Please refer to their installation instructions accordingly.
 
-> We also provide an instrction to construct your own object detection service
-> for LIO-SEGMOT, while the documentation plan is still working in progress.
-> :smiling_face_with_tear:
-
 ## :card_file_box: Sample Datasets
 
 We provide the following pre-built bag files for KITTI raw sequences and the Hsinchu
