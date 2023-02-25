@@ -171,6 +171,18 @@ Please follow the steps to execute LIO-SEGMOT properly:
    rosrun lio_segmot lio_segmot_offlineBagPlayer _bag_filename:="path/to/your/sequence.bag"
    ```
 
+   The default registered LiDAR and IMU topics are `/points_raw` and `/imu_raw`,
+   respectively. If you want to register other LiDAR/IMU topics, please add
+   additional options `_lidar_topic` and `_imu_topic`. For example, if you are
+   using the GuangfuRoad sequence (`/velodyne_points` and `/imu/data` for LiDAR
+   and IMU topics, respectively):
+
+   ```bash
+   rosrun lio_segmot lio_segmot_offlineBagPlayer _bag_filename:="GuangfuRoad-06-13.bag" \
+                                                 _lidar_topic:="/velodyne_points" \
+                                                 _imu_topic:="/imu/data"
+   ```
+
 ## :wheelchair: Services of LIO-SEGMOT
 
 ### `/lio_segmot/save_map`
