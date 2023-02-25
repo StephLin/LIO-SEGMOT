@@ -50,11 +50,11 @@ class TransformFusion : public ParamServer {
       }
     }
 
-    subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("lio_sam/mapping/odometry", 5, &TransformFusion::lidarOdometryHandler, this, ros::TransportHints().tcpNoDelay());
+    subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("lio_segmot/mapping/odometry", 5, &TransformFusion::lidarOdometryHandler, this, ros::TransportHints().tcpNoDelay());
     subImuOdometry   = nh.subscribe<nav_msgs::Odometry>(odomTopic + "_incremental", 2000, &TransformFusion::imuOdometryHandler, this, ros::TransportHints().tcpNoDelay());
 
     pubImuOdometry = nh.advertise<nav_msgs::Odometry>(odomTopic, 2000);
-    pubImuPath     = nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1);
+    pubImuPath     = nh.advertise<nav_msgs::Path>("lio_segmot/imu/path", 1);
   }
 
   Eigen::Affine3f odom2affine(nav_msgs::Odometry odom) {
@@ -189,7 +189,7 @@ class IMUPreintegration : public ParamServer {
 
   IMUPreintegration() {
     subImu      = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000, &IMUPreintegration::imuHandler, this, ros::TransportHints().tcpNoDelay());
-    subOdometry = nh.subscribe<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
+    subOdometry = nh.subscribe<nav_msgs::Odometry>("lio_segmot/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
 
     pubImuOdometry = nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000);
 

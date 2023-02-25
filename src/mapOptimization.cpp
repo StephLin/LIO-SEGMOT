@@ -1,12 +1,12 @@
 #include <jsk_topic_tools/color_utils.h>
 #include "factor.h"
-#include "lio_sam/Diagnosis.h"
-#include "lio_sam/ObjectStateArray.h"
-#include "lio_sam/cloud_info.h"
-#include "lio_sam/detection.h"
-#include "lio_sam/flags.h"
-#include "lio_sam/save_estimation_result.h"
-#include "lio_sam/save_map.h"
+#include "lio_segmot/Diagnosis.h"
+#include "lio_segmot/ObjectStateArray.h"
+#include "lio_segmot/cloud_info.h"
+#include "lio_segmot/detection.h"
+#include "lio_segmot/flags.h"
+#include "lio_segmot/save_estimation_result.h"
+#include "lio_segmot/save_map.h"
 #include "solver.h"
 #include "utility.h"
 
@@ -284,10 +284,10 @@ class mapOptimization : public ParamServer {
   ros::ServiceServer srvSaveEstimationResult;
 
   ros::ServiceClient detectionClient;
-  lio_sam::detection detectionSrv;
+  lio_segmot::detection detectionSrv;
 
   std::deque<nav_msgs::Odometry> gpsQueue;
-  lio_sam::cloud_info cloudInfo;
+  lio_segmot::cloud_info cloudInfo;
 
   vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
   vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
@@ -378,7 +378,7 @@ class mapOptimization : public ParamServer {
   visualization_msgs::MarkerArray trackingObjectLabels;
   visualization_msgs::MarkerArray trackingObjectVelocities;
   visualization_msgs::MarkerArray trackingObjectVelocityArrows;
-  lio_sam::ObjectStateArray objectStates;
+  lio_segmot::ObjectStateArray objectStates;
   uint64_t numberOfRegisteredObjects = 0;
   uint64_t numberOfTrackingObjects   = 0;
   bool anyObjectIsTightlyCoupled     = false;
@@ -394,47 +394,47 @@ class mapOptimization : public ParamServer {
     parameters.relinearizeSkip      = 1;
     isam                            = new MaxMixtureISAM2(parameters);
 
-    pubKeyPoses                 = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1);
-    pubLaserCloudSurround       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1);
-    pubLaserOdometryGlobal      = nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry", 1);
-    pubLaserOdometryIncremental = nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1);
-    pubPath                     = nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1);
+    pubKeyPoses                 = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/trajectory", 1);
+    pubLaserCloudSurround       = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/map_global", 1);
+    pubLaserOdometryGlobal      = nh.advertise<nav_msgs::Odometry>("lio_segmot/mapping/odometry", 1);
+    pubLaserOdometryIncremental = nh.advertise<nav_msgs::Odometry>("lio_segmot/mapping/odometry_incremental", 1);
+    pubPath                     = nh.advertise<nav_msgs::Path>("lio_segmot/mapping/path", 1);
 
-    subCloud = nh.subscribe<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
+    subCloud = nh.subscribe<lio_segmot::cloud_info>("lio_segmot/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
     subGPS   = nh.subscribe<nav_msgs::Odometry>(gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
     subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-    srvSaveMap              = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
-    srvSaveEstimationResult = nh.advertiseService("lio_sam/save_estimation_result", &mapOptimization::saveEstimationResultService, this);
-    detectionClient         = nh.serviceClient<lio_sam::detection>("se_ssd");
+    srvSaveMap              = nh.advertiseService("lio_segmot/save_map", &mapOptimization::saveMapService, this);
+    srvSaveEstimationResult = nh.advertiseService("lio_segmot/save_estimation_result", &mapOptimization::saveEstimationResultService, this);
+    detectionClient         = nh.serviceClient<lio_segmot::detection>("lio_segmot_detector");
 
-    pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
-    pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud", 1);
-    pubLoopConstraintEdge = nh.advertise<visualization_msgs::MarkerArray>("/lio_sam/mapping/loop_closure_constraints", 1);
+    pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/icp_loop_closure_history_cloud", 1);
+    pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/icp_loop_closure_corrected_cloud", 1);
+    pubLoopConstraintEdge = nh.advertise<visualization_msgs::MarkerArray>("/lio_segmot/mapping/loop_closure_constraints", 1);
 
-    pubRecentKeyFrames    = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1);
-    pubRecentKeyFrame     = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1);
-    pubCloudRegisteredRaw = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1);
+    pubRecentKeyFrames    = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/map_local", 1);
+    pubRecentKeyFrame     = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/cloud_registered", 1);
+    pubCloudRegisteredRaw = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/cloud_registered_raw", 1);
 
-    pubDetection                  = nh.advertise<BoundingBoxArray>("lio_sam/mapping/detections", 1);
-    pubLaserCloudDeskewed         = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_deskewed", 1);
-    pubObjects                    = nh.advertise<BoundingBoxArray>("lio_sam/mapping/objects", 1);
-    pubObjectPaths                = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_paths", 1);
-    pubTightlyCoupledObjectPoints = nh.advertise<visualization_msgs::Marker>("lio_sam/mapping/tightly_coupled_object_points", 1);
-    pubObjectLabels               = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_labels", 1);
-    pubObjectVelocities           = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocities", 1);
-    pubObjectVelocityArrows       = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/mapping/object_velocity_arrows", 1);
-    pubObjectStates               = nh.advertise<lio_sam::ObjectStateArray>("lio_sam/mapping/object_states", 1);
+    pubDetection                  = nh.advertise<BoundingBoxArray>("lio_segmot/mapping/detections", 1);
+    pubLaserCloudDeskewed         = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/cloud_deskewed", 1);
+    pubObjects                    = nh.advertise<BoundingBoxArray>("lio_segmot/mapping/objects", 1);
+    pubObjectPaths                = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/mapping/object_paths", 1);
+    pubTightlyCoupledObjectPoints = nh.advertise<visualization_msgs::Marker>("lio_segmot/mapping/tightly_coupled_object_points", 1);
+    pubObjectLabels               = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/mapping/object_labels", 1);
+    pubObjectVelocities           = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/mapping/object_velocities", 1);
+    pubObjectVelocityArrows       = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/mapping/object_velocity_arrows", 1);
+    pubObjectStates               = nh.advertise<lio_segmot::ObjectStateArray>("lio_segmot/mapping/object_states", 1);
 
-    pubTrackingObjects              = nh.advertise<BoundingBoxArray>("lio_sam/tracking/objects", 1);
-    pubTrackingObjectPaths          = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_paths", 1);
-    pubTrackingObjectLabels         = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_labels", 1);
-    pubTrackingObjectVelocities     = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocities", 1);
-    pubTrackingObjectVelocityArrows = nh.advertise<visualization_msgs::MarkerArray>("lio_sam/tracking/object_velocity_arrows", 1);
+    pubTrackingObjects              = nh.advertise<BoundingBoxArray>("lio_segmot/tracking/objects", 1);
+    pubTrackingObjectPaths          = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/tracking/object_paths", 1);
+    pubTrackingObjectLabels         = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/tracking/object_labels", 1);
+    pubTrackingObjectVelocities     = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/tracking/object_velocities", 1);
+    pubTrackingObjectVelocityArrows = nh.advertise<visualization_msgs::MarkerArray>("lio_segmot/tracking/object_velocity_arrows", 1);
 
-    pubDiagnosis = nh.advertise<lio_sam::Diagnosis>("lio_sam/diagnosis", 1);
+    pubDiagnosis = nh.advertise<lio_segmot::Diagnosis>("lio_segmot/diagnosis", 1);
 
-    pubReady = nh.advertise<std_msgs::Empty>("lio_sam/ready", 1);
+    pubReady = nh.advertise<std_msgs::Empty>("lio_segmot/ready", 1);
 
     downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
@@ -499,7 +499,7 @@ class mapOptimization : public ParamServer {
     tightlyCoupledObjectPoints.pose.orientation.w = 1.0;
   }
 
-  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
+  void laserCloudInfoHandler(const lio_segmot::cloud_infoConstPtr& msgIn) {
     // extract time stamp
     timeLaserInfoStamp = msgIn->header.stamp;
     timeLaserInfoCur   = msgIn->header.stamp.toSec();
@@ -617,7 +617,7 @@ class mapOptimization : public ParamServer {
     return thisPose6D;
   }
 
-  bool saveMapService(lio_sam::save_mapRequest& req, lio_sam::save_mapResponse& res) {
+  bool saveMapService(lio_segmot::save_mapRequest& req, lio_segmot::save_mapResponse& res) {
     string saveMapDirectory;
 
     cout << "****************************************************" << endl;
@@ -682,15 +682,15 @@ class mapOptimization : public ParamServer {
     return true;
   }
 
-  bool saveEstimationResultService(lio_sam::save_estimation_resultRequest& req, lio_sam::save_estimation_resultResponse& res) {
+  bool saveEstimationResultService(lio_segmot::save_estimation_resultRequest& req, lio_segmot::save_estimation_resultResponse& res) {
     res.robotTrajectory            = globalPath;
     res.objectTrajectories         = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
     res.objectVelocities           = std::vector<nav_msgs::Path>(numberOfRegisteredObjects, nav_msgs::Path());
     res.trackingObjectTrajectories = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
     res.trackingObjectVelocities   = std::vector<nav_msgs::Path>(numberOfTrackingObjects, nav_msgs::Path());
-    res.trackingObjectStates       = std::vector<lio_sam::ObjectStateArray>(numberOfTrackingObjects, lio_sam::ObjectStateArray());
-    res.objectFlags                = std::vector<lio_sam::flags>(numberOfRegisteredObjects, lio_sam::flags());
-    res.trackingObjectFlags        = std::vector<lio_sam::flags>(numberOfTrackingObjects, lio_sam::flags());
+    res.trackingObjectStates       = std::vector<lio_segmot::ObjectStateArray>(numberOfTrackingObjects, lio_segmot::ObjectStateArray());
+    res.objectFlags                = std::vector<lio_segmot::flags>(numberOfRegisteredObjects, lio_segmot::flags());
+    res.trackingObjectFlags        = std::vector<lio_segmot::flags>(numberOfTrackingObjects, lio_segmot::flags());
     for (int t = 0; t < objects.size(); ++t) {
       for (const auto& pairedObject : objects[t]) {
         const auto& object = pairedObject.second;
@@ -711,7 +711,7 @@ class mapOptimization : public ParamServer {
         res.objectFlags[object.objectIndex].flags.push_back(object.isTightlyCoupled ? 1 : 0);
         res.trackingObjectFlags[object.objectIndexForTracking].flags.push_back(object.isTightlyCoupled ? 1 : 0);
 
-        lio_sam::ObjectState state;
+        lio_segmot::ObjectState state;
         state.header.frame_id = odometryFrame;
         state.header.stamp    = object.timestamp;
         state.pose            = gtsamPose2ROSPose(isamCurrentEstimate.at<Pose3>(object.poseNodeIndex));
@@ -733,8 +733,8 @@ class mapOptimization : public ParamServer {
     if (savePCD == false)
       return;
 
-    lio_sam::save_mapRequest req;
-    lio_sam::save_mapResponse res;
+    lio_segmot::save_mapRequest req;
+    lio_segmot::save_mapResponse res;
 
     if (!saveMapService(req, res)) {
       cout << "Fail to save map" << endl;
@@ -2711,7 +2711,7 @@ class mapOptimization : public ParamServer {
           }
 
           // Diagnosis
-          lio_sam::ObjectState state;
+          lio_segmot::ObjectState state;
           state.header.frame_id        = odometryFrame;
           state.header.stamp           = timeLaserInfoStamp;
           state.detection              = object.detection;
@@ -2780,7 +2780,7 @@ class mapOptimization : public ParamServer {
       pubObjectStates.publish(objectStates);
     }
 
-    lio_sam::Diagnosis diagnosis;
+    lio_segmot::Diagnosis diagnosis;
     diagnosis.header.frame_id               = odometryFrame;
     diagnosis.header.stamp                  = timeLaserInfoStamp;
     diagnosis.numberOfDetections            = detections ? detections->boxes.size() : 0;
@@ -2791,7 +2791,7 @@ class mapOptimization : public ParamServer {
 };
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "lio_sam");
+  ros::init(argc, argv, "lio_segmot");
 
   mapOptimization MO;
 

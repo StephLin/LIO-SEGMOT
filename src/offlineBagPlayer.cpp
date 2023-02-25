@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
   _nh.param<std::string>("pub_imu_topic", pub_imu_topic, "/imu_raw");
   _nh.param<std::string>("pub_lidar_topic", pub_lidar_topic, "/points_raw");
 
-  ros::Subscriber sub = nh.subscribe<std_msgs::Empty>("lio_sam/ready", 10, &odometryIsDoneCallback);
+  ros::Subscriber sub = nh.subscribe<std_msgs::Empty>("lio_segmot/ready", 10, &odometryIsDoneCallback);
 
   pubImu   = nh.advertise<sensor_msgs::Imu>(pub_imu_topic, 2000);
   pubLiDAR = nh.advertise<sensor_msgs::PointCloud2>(pub_lidar_topic, 1);
