@@ -406,7 +406,7 @@ class mapOptimization : public ParamServer {
 
     srvSaveMap              = nh.advertiseService("lio_segmot/save_map", &mapOptimization::saveMapService, this);
     srvSaveEstimationResult = nh.advertiseService("lio_segmot/save_estimation_result", &mapOptimization::saveEstimationResultService, this);
-    detectionClient         = nh.serviceClient<lio_segmot::detection>("se_ssd");
+    detectionClient         = nh.serviceClient<lio_segmot::detection>("lio_segmot_detector");
 
     pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/icp_loop_closure_history_cloud", 1);
     pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_segmot/mapping/icp_loop_closure_corrected_cloud", 1);
