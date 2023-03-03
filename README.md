@@ -21,7 +21,7 @@ If you use this project in your research, please cite:
   title={Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry},
   author={Lin, Yu-Kai and Lin, Wen-Chieh and Wang, Chieh-Chih},
   booktitle = {2023 International Conference on Robotics and Automation, {ICRA} 2023,
-               London, UK, May 29 - June 2, 2023},
+               London, UK, May 2023},
   pages     = {1--7},
   year      = {2023},
 }
