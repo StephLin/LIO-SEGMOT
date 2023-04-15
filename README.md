@@ -122,8 +122,11 @@ dataset (GuangfuRoad sequence):
 | KITTI   | 0926-0101   | [bag](http://140.113.150.180:5000/sharing/lhhohwfJT) | [tum](http://140.113.150.180:5000/sharing/JCOaJHw04) |
 | Hsinchu | GuangfuRoad | [bag](http://gofile.me/56KxB/mz6HOYOMG)              | [tum](http://gofile.me/56KxB/t5smaOAZk)              |
 
-Ground truth robot trajectories are stored as
-[the TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#ground-truth_trajectories).
+If you cannot download sample datasets from above links, please refer to
+[this alternative link](https://drive.google.com/drive/folders/1RLlUKq8uiro6-5HY6m3lVcppJxYDuNAX?usp=share_link).
+
+Ground truth robot trajectories (based on GPS data provided by KITTI) are stored
+as [the TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#ground-truth_trajectories).
 Each row has 8 components containing timestamps (sec), xyz-position (meter), and
 xyzw-orientation (quaternion):
 
