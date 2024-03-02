@@ -12,7 +12,7 @@ accepted for publication in [ICRA 2023](https://www.icra2023.org/).
 You can check out [our video](https://youtu.be/5HtnDFPerVo) to understand the
 main idea of LIO-SEGMOT. For more, please refer to our paper:
 
-- Yu-Kai Lin, Wen-Chieh Lin, Chieh-Chih Wang, **Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry**. _2023 International Conference on Robotics and Automation (ICRA)_, pp. 1--7, May 2023. (paper) ([preprint](https://gpl.cs.nctu.edu.tw/Steve-Lin/LIO-SEGMOT/preprint.pdf)) ([code](https://github.com/StephLin/LIO-SEGMOT)) ([video](https://youtu.be/5HtnDFPerVo))
+- Yu-Kai Lin, Wen-Chieh Lin, Chieh-Chih Wang, **Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry**. _2023 International Conference on Robotics and Automation (ICRA)_, pp. 10616--10622, May 2023. ([paper](https://doi.org/10.1109/ICRA48891.2023.10161269)) ([preprint](https://gpl.cs.nctu.edu.tw/Steve-Lin/LIO-SEGMOT/preprint.pdf)) ([code](https://github.com/StephLin/LIO-SEGMOT)) ([video](https://youtu.be/5HtnDFPerVo))
 
 If you use this project in your research, please cite:
 
@@ -22,7 +22,7 @@ If you use this project in your research, please cite:
   author={Lin, Yu-Kai and Lin, Wen-Chieh and Wang, Chieh-Chih},
   booktitle = {2023 International Conference on Robotics and Automation, {ICRA} 2023,
                London, UK, May 2023},
-  pages     = {1--7},
+  pages     = {10616--10622},
   year      = {2023},
 }
 ```
