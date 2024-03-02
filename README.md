@@ -27,6 +27,7 @@ If you use this project in your research, please cite:
 }
 ```
 
+- [:newspaper: Poster](#newspaper-poster)
 - [:gear: Installation](#gear-installation)
   - [Step 1. Preparing the Dependencies](#step-1-preparing-the-dependencies)
   - [Step 2. Building the LIO-SEGMOT Project](#step-2-building-the-lio-segmot-project)
@@ -45,6 +46,10 @@ If you use this project in your research, please cite:
   - [Limitations of LIO-SEGMOT](#limitations-of-lio-segmot)
   - [Possible Future Research Directions](#possible-future-research-directions)
 - [:gift: Acknowledgement](#gift-acknowledgement)
+
+## :newspaper: Poster
+
+![Poster](./docs/_static/images/poster.png)
 
 ## :gear: Installation
 
