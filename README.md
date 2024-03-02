@@ -12,7 +12,7 @@ accepted for publication in [ICRA 2023](https://www.icra2023.org/).
 You can check out [our video](https://youtu.be/5HtnDFPerVo) to understand the
 main idea of LIO-SEGMOT. For more, please refer to our paper:
 
-- Yu-Kai Lin, Wen-Chieh Lin, Chieh-Chih Wang, **Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry**. _2023 International Conference on Robotics and Automation (ICRA)_, pp. 1--7, May 2023. (paper) ([preprint](https://gpl.cs.nctu.edu.tw/Steve-Lin/LIO-SEGMOT/preprint.pdf)) ([code](https://github.com/StephLin/LIO-SEGMOT)) ([video](https://youtu.be/5HtnDFPerVo))
+- Yu-Kai Lin, Wen-Chieh Lin, Chieh-Chih Wang, **Asynchronous State Estimation of Simultaneous Ego-motion Estimation and Multiple Object Tracking for LiDAR-Inertial Odometry**. _2023 International Conference on Robotics and Automation (ICRA)_, pp. 10616--10622, May 2023. ([paper](https://doi.org/10.1109/ICRA48891.2023.10161269)) ([preprint](https://gpl.cs.nctu.edu.tw/Steve-Lin/LIO-SEGMOT/preprint.pdf)) ([code](https://github.com/StephLin/LIO-SEGMOT)) ([video](https://youtu.be/5HtnDFPerVo))
 
 If you use this project in your research, please cite:
 
@@ -22,11 +22,12 @@ If you use this project in your research, please cite:
   author={Lin, Yu-Kai and Lin, Wen-Chieh and Wang, Chieh-Chih},
   booktitle = {2023 International Conference on Robotics and Automation, {ICRA} 2023,
                London, UK, May 2023},
-  pages     = {1--7},
+  pages     = {10616--10622},
   year      = {2023},
 }
 ```
 
+- [:newspaper: Poster](#newspaper-poster)
 - [:gear: Installation](#gear-installation)
   - [Step 1. Preparing the Dependencies](#step-1-preparing-the-dependencies)
   - [Step 2. Building the LIO-SEGMOT Project](#step-2-building-the-lio-segmot-project)
@@ -45,6 +46,10 @@ If you use this project in your research, please cite:
   - [Limitations of LIO-SEGMOT](#limitations-of-lio-segmot)
   - [Possible Future Research Directions](#possible-future-research-directions)
 - [:gift: Acknowledgement](#gift-acknowledgement)
+
+## :newspaper: Poster
+
+![Poster](./docs/_static/images/poster.png)
 
 ## :gear: Installation
 
@@ -123,7 +128,7 @@ dataset (GuangfuRoad sequence):
 | Hsinchu | GuangfuRoad | [bag](http://gofile.me/56KxB/mz6HOYOMG)              | [tum](http://gofile.me/56KxB/t5smaOAZk)              |
 
 If you cannot download sample datasets from above links, please refer to
-[this alternative link](https://drive.google.com/drive/folders/1RLlUKq8uiro6-5HY6m3lVcppJxYDuNAX?usp=share_link).
+[this alternative link (Google Drive)](https://drive.google.com/drive/folders/17QwfTMCv-2XdgOLxGdrnCwybcSYQhs7S?usp=drive_link).
 
 Ground truth robot trajectories (based on GPS data provided by KITTI) are stored
 as [the TUM format](https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#ground-truth_trajectories).
