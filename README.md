@@ -299,7 +299,7 @@ The first two questions **(Q1)** and **(Q2)** are determined by using the
 Mahalanobis distance of the error vector,
 
 $$
-\Big\Vert\text{ detection error of }\boldsymbol{z}\text{ and the }i\text{-th object } \boldsymbol{x}_{t,i} \text{ }\Big\Vert_{\Sigma}
+\Big\Vert\text{ detection error of }\boldsymbol{z}\text{ and the }i\text{-th object } \boldsymbol{x} _{t,i}\text{ }\Big\Vert _{\Sigma}
 \leq \varepsilon,
 $$
 
@@ -363,15 +363,15 @@ are shown to coincide with the expression used in our paper:
 
 $$
 \begin{aligned}
-\displaystyle\Sigma_{\text{Q}_{3,1}} &= \left(\frac{\varepsilon^\prime}{\varepsilon}\right)^2 \cdot \displaystyle\Sigma_{\text{Q}_{3,1}}^\prime, \\
-\displaystyle\Sigma_{\text{Q}_{3,2}}^\prime &= \begin{bmatrix}\sigma_{\text{Q}_{3,2}}^\text{A} \\
-& \sigma_{\text{Q}_{3,2}}^\text{A} \\
-&& \sigma_{\text{Q}_{3,2}}^\text{A} \\
-&&& \sigma_{\text{Q}_{3,2}}^\text{L} \\
-&&&& \sigma_{\text{Q}_{3,2}}^\text{L} \\
-&&&&& \sigma_{\text{Q}_{3,2}}^\text{L}
+\displaystyle\Sigma _{\text{Q} _{3,1}} &= \left(\frac{\varepsilon^\prime}{\varepsilon}\right)^2 \cdot \displaystyle\Sigma _{\text{Q} _{3,1}}^\prime, \\
+\displaystyle\Sigma _{\text{Q} _{3,2}}^\prime &= \begin{bmatrix}\sigma _{\text{Q} _{3,2}}^\text{A} \\
+& \sigma _{\text{Q} _{3,2}}^\text{A} \\
+&& \sigma _{\text{Q} _{3,2}}^\text{A} \\
+&&& \sigma _{\text{Q} _{3,2}}^\text{L} \\
+&&&& \sigma _{\text{Q} _{3,2}}^\text{L} \\
+&&&&& \sigma _{\text{Q} _{3,2}}^\text{L}
 \end{bmatrix}, \\
-\displaystyle\Sigma_{\text{Q}_{3,2}} &= \frac{1}{\varepsilon^2} \cdot \displaystyle\Sigma_{\text{Q}_{3,2}}^\prime.
+\displaystyle\Sigma _{\text{Q} _{3,2}} &= \frac{1}{\varepsilon^2} \cdot \displaystyle\Sigma _{\text{Q} _{3,2}}^\prime.
 \end{aligned}
 $$
 
